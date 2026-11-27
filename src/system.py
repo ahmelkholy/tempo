@@ -502,6 +502,7 @@ class MusicController:
         try:
             result = subprocess.run(
                 [path, "--version"],
+                env=media_environment(),
                 capture_output=True,
                 timeout=5,
                 creationflags=_SUBPROCESS_FLAGS,
@@ -1579,8 +1580,12 @@ class TrayManager:
                 "Focus Timer — Idle",
                 self._build_menu(),
             )
-            self._thread = threading.Thread(target=self._icon.run, daemon=True)
-            self._thread.start()
+            if sys.platform == "darwin":
+                self._icon.run_detached(setup=lambda icon: None)
+                self._icon.visible = True
+            else:
+                self._thread = threading.Thread(target=self._icon.run, daemon=True)
+                self._thread.start()
             logger.info("System tray icon started")
         except Exception:
             logger.exception("Failed to start system tray icon")

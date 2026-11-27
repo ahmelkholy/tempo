@@ -3807,7 +3807,9 @@ class FocusGUI:
     def __init__(self):
         """Initialize the GUI application"""
         try:
-            # Initialize components
+            # Tk must own the Cocoa application before the system tray starts.
+            self.root = tk.Tk()
+            self.root.withdraw()
             self.config = ConfigManager()
             self.ui_bg = "#171c22" if self.config.get("dark_theme", True) else "#f7f8fa"
             self.ui_fg = "#edf1f5" if self.config.get("dark_theme", True) else "#17212b"
@@ -3890,9 +3892,6 @@ class FocusGUI:
                 on_stop=self._on_session_stopped,
             )
 
-            # GUI setup
-            self.root = tk.Tk()
-            self.root.withdraw()
             self.setup_window()
             self.create_widgets()
             self.apply_theme()

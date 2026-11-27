@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-      - run: python -m pip install build twine flake8 black==26.3.1 bandit
+      - run: python -m pip install build twine flake8 black==26.10.1 bandit
       - run: flake8 main.py focus_app.py build.py src tests --select=E9,F63,F7,F82 --show-source
       - run: black --check main.py focus_app.py build.py src tests
       - run: bandit -r src -lll -q
@@ -66,10 +66,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $player = Get-ChildItem "$env:ChocolateyInstall/lib/mpvio.install" -Filter mpv.exe -Recurse | Select-Object -First 1
           if (!$player) { throw "Installed mpv.exe missing" }
-          $player.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          [IO.File]::AppendAllText($env:GITHUB_PATH, "$($player.DirectoryName)`n")
       - name: Install application and test tools
         run: python -m pip install . pytest "pyinstaller>=6.11" build
+      - name: Run Windows tests with real mpv
+        if: runner.os == 'Windows'
+        env:
+          PYTHONUTF8: '1'
+        run: |
+          $player = Get-ChildItem "$env:ChocolateyInstall/lib/mpvio.install" -Filter mpv.exe -Recurse | Select-Object -First 1
+          $env:Path = "$($player.DirectoryName);$env:Path"
+          $env:FOCUS_HOME = Join-Path $env:RUNNER_TEMP focus-ci
+          python -c "import shutil; assert shutil.which('mpv.exe')"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m compileall -q main.py focus_app.py src tests
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m pip check
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python -m pytest -q
       - name: Run desktop tests with real mpv
+        if: runner.os != 'Windows'
         shell: bash
         env:
           PYTHONUTF8: '1'
@@ -85,7 +101,20 @@ jobs:
           fi
       - name: Build native desktop archive
         run: python build.py
+      - name: Start the packaged Windows GUI and check its helpers
+        if: runner.os == 'Windows'
+        run: |
+          $player = Get-ChildItem "$env:ChocolateyInstall/lib/mpvio.install" -Filter mpv.exe -Recurse | Select-Object -First 1
+          $env:Path = "$($player.DirectoryName);$env:Path"
+          & "dist/Ultimate Focus/player-tools/yt-dlp.exe" --version
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          & "dist/Ultimate Focus/player-tools/deno.exe" --version
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $app = Start-Process "dist/Ultimate Focus/Ultimate Focus.exe" -ArgumentList "--self-test" -PassThru
+          if (!$app.WaitForExit(90000)) { $app.Kill(); throw "Desktop check timed out" }
+          exit $app.ExitCode
       - name: Start the packaged GUI and check its helpers
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == macOS ]]; then
@@ -95,7 +124,6 @@ jobs:
             app="dist/Ultimate Focus/Ultimate Focus"
             tools="dist/Ultimate Focus/player-tools"
           fi
-          if [[ "$RUNNER_OS" == Windows ]]; then app="$app.exe"; fi
           "$tools/yt-dlp" --version
           "$tools/deno" --version
           if [[ "$RUNNER_OS" == Linux ]]; then xvfb-run -a "$app" --self-test; else "$app" --self-test; fi
