@@ -51,22 +51,20 @@ DENO = {
 
 def download(folder, repo, tag, name, digest):
     target = folder / name
-    if (
-        not target.exists()
-        or hashlib.file_digest(target.open("rb"), "sha256").hexdigest() != digest
-    ):
+    if target.is_file():
+        with target.open("rb") as cached:
+            if hashlib.file_digest(cached, "sha256").hexdigest() == digest:
+                return target
+    with tempfile.TemporaryDirectory(dir=folder) as temp:
+        pending = Path(temp) / name
         with urllib.request.urlopen(
             f"https://github.com/{repo}/releases/download/{tag}/{name}", timeout=120
-        ) as response, tempfile.NamedTemporaryFile(dir=folder, delete=False) as output:
-            pending = Path(output.name)
+        ) as response, pending.open("wb") as output:
             shutil.copyfileobj(response, output)
-        try:
-            with pending.open("rb") as source:
-                if hashlib.file_digest(source, "sha256").hexdigest() != digest:
-                    raise ValueError(f"Invalid SHA-256 for {name}")
-            pending.replace(target)
-        finally:
-            pending.unlink(missing_ok=True)
+        with pending.open("rb") as source:
+            if hashlib.file_digest(source, "sha256").hexdigest() != digest:
+                raise ValueError(f"Invalid SHA-256 for {name}")
+        pending.replace(target)
     return target
 
 
@@ -138,6 +136,7 @@ def build():
     notices = bundle / ("Contents/Resources" if system == "Darwin" else "")
     for file in ("LICENSE", "THIRD_PARTY.md"):
         shutil.copy2(ROOT / file, notices / file)
+    shutil.copytree(ROOT / "licenses", notices / "licenses", dirs_exist_ok=True)
     stem = (
         "ultimate-focus-timer-"
         + __version__

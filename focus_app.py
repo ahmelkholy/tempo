@@ -17,17 +17,14 @@ def main() -> None:
         run_daemon()
         return
     if sys.argv[1:] == ["--self-test"]:
+        # Set the isolated home before importing src (which resolves runtime paths).
         import tempfile
 
         with tempfile.TemporaryDirectory() as home:
             os.environ["FOCUS_HOME"] = home
-            from src.ui import FocusGUI
+            from src.desktop_check import run
 
-            gui = FocusGUI()
-            gui.root.withdraw()
-            gui.root.update_idletasks()
-            assert gui.music.get_status()["state"] == "stopped"
-            gui.root.destroy()
+            run()
         return
     from main import UltimateFocusLauncher, _detach_gui_on_windows
 

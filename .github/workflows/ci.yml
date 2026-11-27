@@ -61,7 +61,12 @@ jobs:
         run: brew list mpv >/dev/null 2>&1 || brew install mpv
       - name: Install Windows player
         if: runner.os == 'Windows'
-        run: choco install mpv -y --no-progress
+        run: |
+          choco install mpv -y --no-progress
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $player = Get-ChildItem "$env:ChocolateyInstall/lib/mpvio.install" -Filter mpv.exe -Recurse | Select-Object -First 1
+          if (!$player) { throw "Installed mpv.exe missing" }
+          $player.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Install application and test tools
         run: python -m pip install . pytest "pyinstaller>=6.11" build
       - name: Run desktop tests with real mpv

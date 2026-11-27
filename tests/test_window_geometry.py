@@ -40,11 +40,12 @@ def test_reopen_preserves_portrait_dimensions_at_saved_zoom(tmp_path, monkeypatc
         probe = tk.Tk()
     except tk.TclError as exc:
         pytest.skip(f"Tk display unavailable: {exc}")
+    height = min(761, probe.winfo_screenheight() - 160)
     probe.destroy()
     path = tmp_path / "config.yml"
     config = ConfigManager(path)
     config.set("gui_zoom", 0.65)
-    config.set("window_geometry", "283x761+30+30")
+    config.set("window_geometry", f"283x{height}+30+30")
     config.set("classical_music_selected_playlist", "Quiet piano.wav")
     assert config.save_config()
     monkeypatch.setattr("src.ui.ConfigManager", lambda: ConfigManager(path))
@@ -55,15 +56,15 @@ def test_reopen_preserves_portrait_dimensions_at_saved_zoom(tmp_path, monkeypatc
     monkeypatch.setattr("src.ui.TrayManager.start", lambda self: None)
     monkeypatch.setattr("src.ui.HotkeyManager.start", lambda self: None)
 
-    for expected in [(283, 761), (306, 712)]:
+    for expected in [(283, height), (306, height - 49)]:
         app = FocusGUI()
         try:
             app.root.update()
             assert (app.root.winfo_width(), app.root.winfo_height()) == expected
             assert app.music.mpv_process is None
             assert app.music_panel.title_label.cget("text") == "Quiet piano.wav"
-            if expected == (283, 761):
-                app.root.geometry("306x712+30+30")
+            if expected == (283, height):
+                app.root.geometry(f"306x{height - 49}+30+30")
                 app.root.update()
         finally:
             app.on_closing()

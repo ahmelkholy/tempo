@@ -1,0 +1,2 @@
+include build.py build_windows.bat build_windows.ps1 THIRD_PARTY.md files/icon.png
+recursive-include licenses *.txt

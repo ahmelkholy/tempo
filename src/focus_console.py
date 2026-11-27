@@ -6,7 +6,7 @@ Command-line interface for the focus timer with advanced session management
 
 import argparse
 import logging
-import os
+import sys
 import threading
 import time
 from datetime import datetime
@@ -106,7 +106,8 @@ class ConsoleInterface:
 
     def _print_header(self):
         """Print the application header"""
-        os.system("cls" if os.name == "nt" else "clear")
+        if sys.stdout.isatty():
+            print("\033[2J\033[H", end="")
         print("═" * 70)
         print("                     🎯 FOCUS TIMER")
         print("                   Console Manager")
