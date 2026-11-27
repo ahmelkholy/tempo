@@ -180,17 +180,21 @@ if (document.documentElement.dataset.manual === "1") {{
 
         def do_POST(self):
             nonlocal answer
-            if not self.valid() or self.headers.get("Origin") != origin:
-                return self.send_error(403)
+            allowed = self.valid() and self.headers.get("Origin") == origin
             try:
                 length = int(self.headers.get("Content-Length", 0))
                 if not 0 < length <= 131072:
                     raise ValueError
-                result = json.loads(self.rfile.read(length))
+                # Consume the bounded body before replying. Closing with unread data
+                # can reset a Windows loopback connection before its response arrives.
+                body = self.rfile.read(length)
+                if not allowed:
+                    return self.send_error(403)
+                result = json.loads(body)
                 if not isinstance(result, dict):
                     raise ValueError
             except (ValueError, OSError):
-                return self.send_error(400)
+                return self.send_error(400 if allowed else 403)
             if interactive and result.get("open_extensions") is True:
                 try:
                     open_chrome("chrome://extensions/")
