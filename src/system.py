@@ -466,34 +466,11 @@ class MusicController:
                 if self._test_mpv_executable(str(candidate)):
                     return str(candidate)
 
-        system = platform.system()
-        search_paths: List[str] = []
-        if system == "Darwin":
-            search_paths = [
-                "/opt/homebrew/bin/mpv",
-                "/usr/local/bin/mpv",
-                "/usr/bin/mpv",
-                "mpv",
-            ]
-        elif system == "Linux":
-            search_paths = [
-                "/usr/bin/mpv",
-                "/usr/local/bin/mpv",
-                "/snap/bin/mpv",
-                "mpv",
-            ]
-        elif system == "Windows":
-            search_paths = [
-                "mpv.exe",
-                "mpv",
-                str(Path.home() / "AppData" / "Local" / "mpv" / "mpv.exe"),
-                "C:/Program Files/mpv/mpv.exe",
-                "C:/Program Files (x86)/mpv/mpv.exe",
-            ]
+        from .mpv_installer import MPVInstaller
 
-        for path in search_paths:
-            if self._test_mpv_executable(path):
-                return path
+        discovered = MPVInstaller().find_mpv()
+        if discovered and self._test_mpv_executable(str(discovered)):
+            return str(discovered)
 
         logger.warning("MPV executable not found; music will be unavailable")
         return None
@@ -637,7 +614,11 @@ class MusicController:
                 )
             mpv_args.append("--ytdl-raw-options-append=ignore-config=")
         extractor = (
-            shutil.which("yt-dlp", path=env.get("PATH")) if source_kind else None
+            shutil.which(
+                "yt-dlp.exe" if os.name == "nt" else "yt-dlp", path=env.get("PATH")
+            )
+            if source_kind
+            else None
         )
         if extractor:
             mpv_args.append(f"--script-opts-append=ytdl_hook-ytdl_path={extractor}")

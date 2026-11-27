@@ -16,6 +16,33 @@ from typing import Optional, Tuple
 logger = logging.getLogger(__name__)
 
 
+def desktop_install_command():
+    """Use the package manager available to a desktop app on this machine."""
+    if platform.system() == "Windows" and (manager := shutil.which("winget")):
+        return [
+            manager,
+            "install",
+            "--exact",
+            "--id",
+            "shinchiro.mpv",
+            "--source",
+            "winget",
+        ]
+    if platform.system() == "Darwin":
+        manager = shutil.which(
+            "brew",
+            path=os.pathsep.join(
+                [os.environ.get("PATH", ""), "/opt/homebrew/bin", "/usr/local/bin"]
+            ),
+        )
+        return [manager, "install", "mpv"] if manager else None
+    if platform.system() == "Linux" and (auth := shutil.which("pkexec")):
+        for name in ("apt-get", "dnf"):
+            if manager := shutil.which(name):
+                return [auth, manager, "install", "-y", "mpv"]
+    return None
+
+
 class MPVInstaller:
     """Cross-platform MPV installer and detector"""
 
@@ -62,12 +89,24 @@ class MPVInstaller:
                 Path(os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")),
             ]
             for pf in program_files:
-                common_dirs.extend([pf / "mpv", pf / "MPV"])
+                common_dirs.extend([pf / "mpv", pf / "MPV Player"])
 
             # User-specific directories
             user_home = Path.home()
             common_dirs.extend(
                 [
+                    Path(
+                        os.environ.get("LOCALAPPDATA", user_home / "AppData" / "Local")
+                    )
+                    / "Microsoft"
+                    / "WinGet"
+                    / "Links",
+                    Path(
+                        os.environ.get("ChocolateyInstall", "C:/ProgramData/chocolatey")
+                    )
+                    / "lib"
+                    / "mpvio.install"
+                    / "tools",
                     user_home / "mpv",
                     user_home / "portable_config",
                     user_home / "AppData" / "Local" / "mpv",

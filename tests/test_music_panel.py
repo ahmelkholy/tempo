@@ -219,6 +219,24 @@ def test_helper_update_retries_only_current_failure(
         assert "update failed" in panel._recovery_message.get()
 
 
+def test_missing_player_install_button_retries_the_original_attempt(root, monkeypatch):
+    cmd = ["test-package-manager", "install", "mpv"]
+    monkeypatch.setattr("src.mpv_installer.desktop_install_command", lambda: cmd)
+    process = Mock(returncode=0)
+    launch = Mock(return_value=process)
+    monkeypatch.setattr("src.music_panel.subprocess.Popen", launch)
+    panel = MusicPanel(root, Mock(), {}, Mock(), Mock())
+    panel.run = lambda callback: callback()
+    failure = dict(state="error", error="Install mpv", mpv_available=False, attempt=4)
+    panel._refresh_recovery(failure)
+    panel._update_button.invoke()
+    assert launch.call_args.args[0] == cmd
+    process.poll.return_value = 0
+    panel._refresh_recovery(failure)
+    root.update_idletasks()
+    panel.controller.retry_failed_attempt.assert_called_once_with(4)
+
+
 def test_signed_radio_popup_opens_original_mix_in_chrome_and_keeps_retry_available(
     root, monkeypatch
 ):

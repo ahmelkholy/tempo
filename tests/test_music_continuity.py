@@ -25,6 +25,21 @@ def test_reopen_uses_selected_source_after_another_window_saves(tmp_path):
     assert reopened.get_music_playlists()[0]["path"] == song
 
 
+def test_save_recovers_damaged_config_and_preserves_original(tmp_path):
+    path = tmp_path / "config.yml"
+    settings = ConfigManager(path)
+    settings.set("window_geometry", "360x800")
+    assert settings.save_config()
+    damaged = b"work_mins: ["
+    path.write_bytes(damaged)
+    settings.set("work_mins", 30)
+    assert settings.save_config()
+    assert [p.read_bytes() for p in tmp_path.glob("config.yml.corrupt.*")] == [damaged]
+    reopened = ConfigManager(path)
+    assert reopened.get("work_mins") == 30
+    assert reopened.get("window_geometry") == "360x800"
+
+
 def test_idle_player_does_not_probe_mpv(monkeypatch, tmp_path):
     probe = Mock()
     monkeypatch.setattr(MusicController, "_find_mpv_executable", probe)

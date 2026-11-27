@@ -429,15 +429,25 @@ class MusicPanel(tk.Frame):
 
         check()
 
-    def _update_helper(self, attempt):
+    def _update_helper(self, attempt, install_player=None):
         self._update_attempt = attempt
         self._update_button.configure(state="disabled")
-        self._recovery_message.set("Updating the YouTube playback helper…")
+        self._update_error = (
+            "mpv installation failed. Use the mpv download link or try again."
+            if install_player
+            else "The helper update failed. Check your connection and try again."
+        )
+        self._recovery_message.set(
+            "Installing mpv…"
+            if install_player
+            else "Updating the YouTube playback helper…"
+        )
         if self._updater is not None:
             return
         try:
             self._updater = subprocess.Popen(
-                (
+                install_player
+                or (
                     [sys.executable, "--update-youtube"]
                     if getattr(sys, "frozen", False)
                     else [
@@ -463,7 +473,7 @@ class MusicPanel(tk.Frame):
             )
         except OSError:
             self._update_button.configure(state="normal")
-            self._recovery_message.set("Could not start the playback helper update.")
+            self._recovery_message.set(self._update_error)
             return
         if self.on_action:
             self.on_action()
@@ -483,9 +493,7 @@ class MusicPanel(tk.Frame):
                         )
                     )
                     return
-                self._recovery_message.set(
-                    "The helper update failed. Check your connection and try again."
-                )
+                self._recovery_message.set(self._update_error)
                 self._update_button.configure(state="normal")
         if not failed:
             self._dismiss_recovery()
@@ -552,8 +560,19 @@ class MusicPanel(tk.Frame):
         elif source.startswith(("https://", "http://")):
             action("Open in browser", lambda: webbrowser.open(source))
         if status.get("mpv_available") is False:
+            from .mpv_installer import desktop_install_command
+
+            install_player = desktop_install_command()
+            if install_player:
+                self._update_button = ttk.Button(
+                    frame,
+                    text="Install mpv and retry",
+                    command=lambda: self._update_helper(attempt, install_player),
+                )
+                self._update_button.pack(fill="x", pady=2)
             action(
-                "Install mpv…", lambda: webbrowser.open("https://mpv.io/installation/")
+                "Open mpv downloads",
+                lambda: webbrowser.open("https://mpv.io/installation/"),
             )
         elif youtube_source_kind(source) and not connection_failure:
             if getattr(sys, "frozen", False) or (

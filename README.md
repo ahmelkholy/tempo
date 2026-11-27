@@ -13,7 +13,6 @@ A lightweight personal productivity timer for traditional Pomodoro sessions, opt
 - **90/20 Ultradian Rhythm**: Research-backed 90-minute focus cycles with 20-minute recovery
 - **40Hz Binaural Beats**: Gamma wave cognitive enhancement during deep work phases
 - **Zeigarnik Offload System**: Instant thought capture (Ctrl+Shift+Space) to clear working memory
-- **Distraction Blocking**: Automatic domain and process blocking during focus sessions
 
 ### 💻 Lightweight Interfaces
 
@@ -31,6 +30,8 @@ A lightweight personal productivity timer for traditional Pomodoro sessions, opt
 - **Cross-Platform**: Windows, macOS, and Linux support
 
 ## 💻 Quick Start
+
+Download the archive for Windows, macOS, or Linux, extract it, and open **Ultimate Focus**. The music popup can install mpv on supported systems and retry playback. [Download the latest desktop release](https://github.com/ahmelkholy/ultimate-focus-timer/releases/latest).
 
 ### Option 1: Traditional GUI (Recommended)
 
@@ -223,7 +224,6 @@ The Zeigarnik Effect states that incomplete tasks occupy working memory. Our sol
 | Cognitive Enhancement | 40Hz binaural beats | Classical music |
 | Integration | Global CLI + REST API | Standalone app |
 | Resource Usage | ~0% CPU idle | Higher (GUI rendering) |
-| Distraction Blocking | Automatic | Manual |
 | Thought Capture | Ctrl+Shift+Space hotkey | Manual task entry |
 | Best For | Deep work, coding | General productivity |
 
@@ -283,7 +283,7 @@ The daemon exposes a simple REST API on `http://127.0.0.1:8765`:
 **GET /** - Health check
 
 ```json
-{"status": "online", "name": "Ultimate Focus Timer Daemon", "version": "3.0.0"}
+{"status": "online", "name": "Ultimate Focus Timer Daemon", "version": "2.1.0"}
 ```
 
 **POST /start** - Start Ultradian session

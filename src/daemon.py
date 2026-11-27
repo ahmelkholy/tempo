@@ -35,6 +35,7 @@ except ImportError as e:
     ZeigarnikOffloadManager = None  # type: ignore
     logging.getLogger(__name__).warning("Zeigarnik manager not available: %s", e)
 
+from .__version__ import __version__
 from .core import ConfigManager, TaskManager
 from .google_integration import DEFAULT_TASK_LIST_ID, create_google_integration
 from .system import DATA_DIR
@@ -370,7 +371,7 @@ class UltradianStateMachine:
 # FastAPI Application
 # ============================================================================
 
-app = FastAPI(title="Ultimate Focus Timer Daemon", version="3.0.0")
+app = FastAPI(title="Ultimate Focus Timer Daemon", version=__version__)
 
 # Global state machine instance
 state_machine = UltradianStateMachine()
@@ -439,7 +440,7 @@ async def root():
     return {
         "status": "online",
         "name": "Ultimate Focus Timer Daemon",
-        "version": "3.0.0",
+        "version": __version__,
     }
 
 

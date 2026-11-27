@@ -3,6 +3,7 @@
 Daemon Manager - Start/stop HTTP daemon from GUI
 """
 
+import json
 import logging
 import subprocess
 import sys
@@ -11,6 +12,7 @@ import time
 from pathlib import Path
 from typing import Callable, Optional
 
+from .core import _atomic_write_text
 from .system import DAEMON_PID_FILE as APP_DAEMON_PID_FILE
 from .system import LOG_DIR, PROJECT_ROOT
 
@@ -53,29 +55,20 @@ class DaemonManager:
 
     def is_running(self) -> bool:
         """Check if daemon is running"""
+        import urllib.request
+
         try:
-            import urllib.request
-
-            try:
-                response = urllib.request.urlopen(
-                    f"http://{self.DAEMON_HOST}:{self.DAEMON_PORT}/status",
-                    timeout=2.0,
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open(
+                f"http://{self.DAEMON_HOST}:{self.DAEMON_PORT}/", timeout=2
+            ) as response:
+                info = json.loads(response.read(4096))
+                return (
+                    isinstance(info, dict)
+                    and info.get("name") == "Ultimate Focus Timer Daemon"
+                    and info.get("status") == "online"
                 )
-                return response.status == 200
-            except Exception:
-                # Also try with requests as fallback
-                try:
-                    import requests
-
-                    response = requests.get(
-                        f"http://{self.DAEMON_HOST}:{self.DAEMON_PORT}/status",
-                        timeout=2.0,
-                        proxies={"http": "", "https": ""},  # Disable proxies
-                    )
-                    return response.status_code == 200
-                except Exception:
-                    return False
-        except Exception:
+        except (OSError, ValueError):
             return False
 
     def _resolve_python_executable(self) -> str:
@@ -108,7 +101,6 @@ class DaemonManager:
         try:
             if self.is_running():
                 logger.info("Daemon already running")
-                self._owns_daemon = False
                 self._set_status("running")
                 return True
 
@@ -136,92 +128,57 @@ class DaemonManager:
 
             # Save PID
             if self._daemon_process and self._daemon_process.pid:
-                self.DAEMON_PID_FILE.write_text(str(self._daemon_process.pid))
+                _atomic_write_text(self.DAEMON_PID_FILE, str(self._daemon_process.pid))
 
             # Wait for daemon to start
             for attempt in range(15):
                 time.sleep(0.5)
+                if self._daemon_process.poll() is not None:
+                    break
                 if self.is_running():
                     logger.info("Daemon started successfully")
                     self._set_status("running")
                     return True
 
-            logger.warning("Daemon started but not responding")
-            # Try to read log to see what went wrong
+            logger.warning("Daemon did not start. See %s", log_file)
+        except Exception:
+            logger.exception("Error starting daemon")
+        self._stop_owned_process()
+        self._set_status("error")
+        return False
+
+    def _stop_owned_process(self):
+        proc = self._daemon_process
+        if proc is None:
+            return
+        if proc.poll() is None:
+            proc.terminate()
             try:
-                if log_file.exists():
-                    log_content = log_file.read_text()
-                    logger.error(f"Daemon startup logs:\n{log_content}")
-            except Exception:
-                pass
-            self._owns_daemon = False
-            self._set_status("error")
-            return False
-
-        except Exception as e:
-            logger.error(f"Error starting daemon: {e}")
-            import traceback
-
-            logger.error(traceback.format_exc())
-            self._owns_daemon = False
-            self._set_status("error")
-            return False
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=3)
+        if self.DAEMON_PID_FILE.exists() and self.DAEMON_PID_FILE.read_text() == str(
+            proc.pid
+        ):
+            self.DAEMON_PID_FILE.unlink(missing_ok=True)
+        self._daemon_process = None
+        self._owns_daemon = False
 
     def stop(self, managed_only: bool = False) -> bool:
-        """Stop the daemon"""
+        """Stop the child started by this instance."""
         try:
-            if managed_only and not self._owns_daemon:
-                logger.info(
-                    "Skipping daemon stop because this instance does not own it"
-                )
-                return True
-            if not self.is_running():
-                logger.info("Daemon already stopped")
-                self._owns_daemon = False
-                self._set_status("stopped")
-                return True
-
-            logger.info("Stopping daemon...")
-            self._set_status("stopping")
-
-            # Try HTTP stop first
-            try:
-                import requests
-
-                requests.post(
-                    f"http://{self.DAEMON_HOST}:{self.DAEMON_PORT}/stop",
-                    timeout=2.0,
-                )
-            except Exception:
-                pass
-
-            # Kill process if still running
-            if self._daemon_process:
-                try:
-                    self._daemon_process.terminate()
-                    self._daemon_process.wait(timeout=3)
-                except Exception:
-                    try:
-                        self._daemon_process.kill()
-                    except Exception:
-                        pass
-
-            # Clean up PID file
-            if self.DAEMON_PID_FILE.exists():
-                self.DAEMON_PID_FILE.unlink()
-
-            self._daemon_process = None
-            self._owns_daemon = False
-            logger.info("Daemon stopped")
+            if not self._owns_daemon:
+                return managed_only or not self.is_running()
+            self._stop_owned_process()
             self._set_status("stopped")
             return True
-
-        except Exception as e:
-            logger.error(f"Error stopping daemon: {e}")
+        except (OSError, subprocess.SubprocessError):
+            logger.exception("Error stopping daemon")
             self._set_status("error")
             return False
 
-    def check_status_background(self, interval: float = 2.0):
+    def check_status_background(self, interval: float = 60.0):
         """Start background thread to check daemon status"""
         self._stop_checking = False
 

@@ -110,8 +110,10 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           & "dist/Ultimate Focus/player-tools/deno.exe" --version
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $env:FOCUS_TEST_REPORT = Join-Path $env:RUNNER_TEMP desktop-check.txt
           $app = Start-Process "dist/Ultimate Focus/Ultimate Focus.exe" -ArgumentList "--self-test" -PassThru
           if (!$app.WaitForExit(90000)) { $app.Kill(); throw "Desktop check timed out" }
+          if (Test-Path $env:FOCUS_TEST_REPORT) { Get-Content $env:FOCUS_TEST_REPORT }
           exit $app.ExitCode
       - name: Start the packaged GUI and check its helpers
         if: runner.os != 'Windows'

@@ -24,7 +24,17 @@ def main() -> None:
             os.environ["FOCUS_HOME"] = home
             from src.desktop_check import run
 
-            run()
+            try:
+                run()
+            except Exception:
+                import traceback
+
+                if report := os.environ.get("FOCUS_TEST_REPORT"):
+                    with open(report, "w", encoding="utf-8") as details:
+                        traceback.print_exc(file=details)
+                else:
+                    traceback.print_exc()
+                raise SystemExit(1) from None
         return
     from main import UltimateFocusLauncher, _detach_gui_on_windows
 

@@ -1,4 +1,5 @@
 import io
+from pathlib import Path
 from unittest.mock import Mock
 
 from src.core import ConfigManager
@@ -399,7 +400,10 @@ def test_youtube_uses_app_extractor_with_launcher_path(monkeypatch, tmp_path):
     monkeypatch.setattr("src.system._mac_music_proxy", lambda: "")
     assert music.start_music("https://youtu.be/seed")
     args = launch.call_args.args[0]
-    assert f"--script-opts-append=ytdl_hook-ytdl_path={helper}" in args
+    option = "--script-opts-append=ytdl_hook-ytdl_path="
+    assert [Path(arg[len(option) :]) for arg in args if arg.startswith(option)] == [
+        helper
+    ]
 
 
 def test_outdated_repair_cannot_restart_stopped_or_replaced_music(
