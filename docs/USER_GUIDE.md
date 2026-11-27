@@ -16,86 +16,27 @@ Welcome to the comprehensive documentation for Ultimate Focus Timer, a cross-pla
 
 ## 🚀 Quick Start
 
-### Windows Executable (Recommended)
+Choose your desktop archive and extract the whole folder. Double-click **Ultimate Focus** to start. [Download the latest release](https://github.com/ahmelkholy/ultimate-focus-timer/releases/latest).
 
-The fastest way to get started on Windows:
+| Computer | Archive suffix | Application |
+| --- | --- | --- |
+| Windows x86-64 | `windows-x86_64.zip` | `Ultimate Focus.exe` |
+| Mac with Apple Silicon | `macos-arm64.zip` | `Ultimate Focus.app` |
+| Mac with Intel | `macos-x86_64.zip` | `Ultimate Focus.app` |
+| Linux x86-64 | `linux-x86_64.tar.gz` | `Ultimate Focus` |
 
-1. Download the latest `UltimateFocusTimer-windows-x64.zip` from the [Releases page](https://github.com/ahmelkholy/ultimate-focus-timer/releases)
-2. Extract the ZIP file to any location
-3. Run `UltimateFocusTimer.exe`
-
-No Python installation or setup required!
-
-### Prerequisites (For source installation)
-
-- **Python 3.8+** (Python 3.10+ recommended for best performance)
-- **MPV Media Player** (automatically installed by setup script)
-- **Internet connection** (for initial setup and music streaming)
-
-### 5-Minute Setup (Source installation)
-
-```bash
-# 1. Navigate to project directory
-cd "ultimate-focus-timer"
-
-# 2. Create virtual environment
-python -m venv .venv
-
-# 3. Activate virtual environment
-# Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-# Windows Command Prompt:
-.\.venv\Scripts\activate.bat
-# Linux/macOS:
-source .venv/bin/activate
-
-# 4. Install dependencies
-pip install -r requirements.txt
-
-# 5. Run automated setup
-python setup.py
-
-# 6. Launch application
-python main.py
-```
+The download includes the Python runtime and YouTube helpers. Press **Play** to use the music popup if mpv needs installing. Use **Music → Change…** to select a song, playlist, or Mix.
 
 ## 📦 Installation Guide
 
-### Pre-Built Executables (Recommended)
+For a source installation, use Python 3.11 or later with Tk. From the checkout, create a virtual environment with `python -m venv .venv`. Activate the environment with `.venv\Scripts\Activate.ps1` in Windows PowerShell or `source .venv/bin/activate` on macOS and Linux. Then run the following commands.
 
-#### Windows
-
-1. Download the latest `UltimateFocusTimer-windows-x64.zip` from the [Releases page](https://github.com/ahmelkholy/ultimate-focus-timer/releases)
-2. Extract the ZIP file to any location
-3. Run `UltimateFocusTimer.exe`
-
-#### macOS
-
-1. Download the latest `UltimateFocusTimer-macos.zip` from the [Releases page](https://github.com/ahmelkholy/ultimate-focus-timer/releases)
-2. Extract the ZIP file
-3. Run `UltimateFocusTimer` application
-
-#### Linux
-
-1. Download the latest `UltimateFocusTimer-linux.zip` from the [Releases page](https://github.com/ahmelkholy/ultimate-focus-timer/releases)
-2. Extract the ZIP file
-3. Run `./UltimateFocusTimer`
-
-### Source Installation
-
-The automated setup script handles all dependencies and configuration:
-
-```bash
-python setup.py
+```sh
+python -m pip install .
+python main.py --gui
 ```
 
-**What the setup does:**
-
-- Checks Python compatibility
-- Installs MPV media player (cross-platform)
-- Verifies all Python dependencies
-- Creates desktop integration
-- Tests the installation
+Source installations use mpv for music and Deno for YouTube playback. [mpv installation](https://mpv.io/installation/) and [Deno installation](https://docs.deno.com/runtime/getting_started/installation/).
 
 ## 🖥️ User Interfaces
 

@@ -1,6 +1,8 @@
 # Ultimate Focus Timer - Quick Start Guide
 
-## Installation
+Download the desktop archive for your computer, extract it, and open **Ultimate Focus**. [Get the latest release](https://github.com/ahmelkholy/ultimate-focus-timer/releases/latest).
+
+## Installation from source
 
 1. **Clone the repository:**
 

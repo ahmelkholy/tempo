@@ -93,22 +93,22 @@ The timer opens in portrait on first use and remembers the window size and zoom 
 - **[Complete Documentation](docs/README.md)** - Full user guide and features
 - **[Virtual Environment Setup](docs/VENV_SETUP.md)** - Detailed environment configuration
 - **[Contributing Guide](docs/CONTRIBUTING.md)** - How to contribute to the project
-- **[Changelog](docs/CHANGELOG.md)** - Version history and updates
+- **[Changelog](CHANGELOG.md)** - Version history and updates
 
 ## 🛠️ System Requirements
 
 ### For Optional Daemon Mode (Ultradian Rhythm)
 
-- **Python 3.11+** (Python 3.10+ recommended)
+- **Python 3.11+** with Tk for source installs
 - **PortAudio** (for 40Hz binaural beats)
 - **FastAPI & Uvicorn** (async web framework)
 
 ### For Traditional Mode (Pomodoro GUI)
 
-- **Python 3.11+** (Python 3.10+ recommended)
-- **MPV Media Player** (auto-installed by setup script)
+- **Python 3.11+** with Tk for source installs
+- **mpv** for music playback
 - **Tkinter** (usually included with Python)
-- **Supported Platforms**: Windows 10/11, macOS 10.14+, Linux
+- **Desktop builds** for Windows x86-64, Apple Silicon and Intel macOS, and Linux x86-64
 
 ## 📦 Installation
 
@@ -152,9 +152,6 @@ cd ultimate-focus-timer
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Run setup (installs MPV)
-python setup.py
 
 # Launch GUI
 python main.py --gui
