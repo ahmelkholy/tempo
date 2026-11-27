@@ -149,15 +149,17 @@ class UltimateFocusLauncher:
 
     # ── Launch modes ──────────────────────────────────────────────────────────
 
-    def _check_display_available(self) -> bool:
+    @staticmethod
+    def _check_display_available() -> bool:
         if platform.system() == "Windows":
             return True
         if platform.system() == "Darwin":
             return not os.environ.get("SSH_CLIENT") and not os.environ.get("SSH_TTY")
         return bool(os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY"))
 
-    def launch_gui(self) -> bool:
-        if not self._check_display_available():
+    @classmethod
+    def launch_gui(cls) -> bool:
+        if not cls._check_display_available():
             logger.error("No GUI display available; try --console")
             return False
         try:
@@ -194,7 +196,10 @@ class UltimateFocusLauncher:
 
     def run_quick_session(self, minutes: int = 25, session_type: str = "work"):
         logger.info("Quick %s session: %d minutes", session_type, minutes)
-        if self.config_manager.get("classical_music", True):
+        if self.config_manager.get("classical_music", True) and (
+            session_type == "work"
+            or not self.config_manager.get("pause_music_on_break", True)
+        ):
             self.music_controller.start_music()
         try:
             for remaining in range(minutes * 60, 0, -1):
@@ -436,11 +441,12 @@ def main():
         _create_desktop_shortcut()
         return
 
-    launcher = UltimateFocusLauncher()
-
     if args.gui:
-        launcher.launch_gui()
-    elif args.console:
+        UltimateFocusLauncher.launch_gui()
+        return
+
+    launcher = UltimateFocusLauncher()
+    if args.console:
         launcher.launch_console()
     elif args.dashboard:
         launcher.launch_dashboard()

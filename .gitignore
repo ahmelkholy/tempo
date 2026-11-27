@@ -202,6 +202,8 @@ daemon.pid
 exports/
 log/
 *.log.*
+data/last_music.json*
+data/chrome-mix/
 data/sync_queue.dead.json
 data/daily_tasks.json
 data/daily_tasks.json.corrupt*
@@ -209,6 +211,7 @@ data/sync_queue.json
 /vscode-extension/node_modules
 vscode-extension/
 config.yml
+config.yml.lock
 config.yaml
 
 # macOS Finder metadata

@@ -25,7 +25,7 @@ A lightweight personal productivity timer for traditional Pomodoro sessions, opt
 
 - **Multiple Interfaces**: GUI, Console, Dashboard, and Interactive Launcher
 - **Task Management**: Add, complete, and track tasks during focus sessions
-- **Music Integration**: Classical music playback with cross-platform audio support
+- **Focus music**: Use **Music → Change…** to open an audio file, playlist, or link. The app opens quietly with your last song selected. Play or start work to listen. Breaks pause the song and resume it in place. If a link fails, the music popup lets you retry, update the YouTube helper, or open the link in your browser. For a personal YouTube Mix, choose **Music → Options → YouTube → Chrome session**. **Up next** follows the live order YouTube returns. If Chrome is disconnected, Play loads the public queue for the same Mix. A popup checks your existing Chrome connection and offers **Play my Mix** when the player is idle. You can save more Mix and playlist links under **Change…**.
 - **Analytics & Tracking**: Comprehensive session logging and productivity insights
 - **Smart Notifications**: Cross-platform desktop notifications with early warnings
 - **Cross-Platform**: Windows, macOS, and Linux support
@@ -70,6 +70,8 @@ python main.py --console
 ```bash
 python main.py --dashboard
 ```
+
+The timer opens in portrait on first use and remembers the window size and zoom you choose.
 
 ## ☁️ Google Tasks Sync & Daemon Automation
 

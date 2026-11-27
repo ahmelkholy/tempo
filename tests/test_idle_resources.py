@@ -38,7 +38,7 @@ def test_display_sleeps_when_idle_or_hidden(visible, timer, music, delay):
     gui.session_manager = Mock(state=timer)
     gui.music = Mock(playback_state=music)
     gui.music_panel = Mock()
-    gui.music_panel._actions.empty.return_value = True
+    gui.music_panel.busy = False
     gui.mini_indicator = None
     gui.update_display = Mock()
     gui.schedule_callback = Mock(return_value="timer")

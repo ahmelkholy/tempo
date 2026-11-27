@@ -60,17 +60,19 @@ class ConsoleInterface:
             "classical_music", True
         ):
             self.music_controller.start_music()
-        self.notification_manager.show_session_start(
-            session_type.value, duration_minutes
-        )
+        elif session_type in (SessionType.SHORT_BREAK, SessionType.LONG_BREAK):
+            self.music_controller.pause_for_break()
+        self.notification_manager.show_session_start(session_type.value, duration_minutes)
 
     def _on_session_completed(self, session_type, duration_minutes):
         self.session_stats["sessions_completed"] += 1
         if session_type == SessionType.WORK:
             self.session_stats["total_work_time"] += duration_minutes
+            self.music_controller.pause_for_break()
         else:
             self.session_stats["total_break_time"] += duration_minutes
-        self.music_controller.stop_music()
+            if session_type in (SessionType.SHORT_BREAK, SessionType.LONG_BREAK):
+                self.music_controller.finish_break()
 
     def _on_early_warning(self, session_type, minutes_remaining):
         self.notification_manager.show_early_warning(

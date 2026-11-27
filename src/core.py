@@ -8,8 +8,11 @@ Combines: config_manager, session_manager, task_manager
 import json
 import logging
 import os
+import tempfile
 import threading
 import time
+from contextlib import contextmanager
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -133,6 +136,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "youtube_browser": "",  # Browser sign-in is opt-in.
     "radio_refresh": True,
     "classical_music_playlist_dir": "",
+    "classical_music_files": [],
     "classical_music_online_playlists": [
         "https://www.youtube.com/playlist?list=PLRBp0Fe2GpgmgL97AviPkenNzgzHByGgs",
         "https://www.youtube.com/playlist?list=PLcNiN7SthNjHqrGWzTsJq1OAZ8TUQgOfO",
@@ -175,13 +179,32 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 }
 
 
+@contextmanager
+def _config_write_lock(path):
+    """Coordinate preference merges across GUI and console instances."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.with_name(path.name + ".lock").open("a+b") as fh:
+        if os.name == "nt":
+            import msvcrt
+
+            fh.seek(0)
+            msvcrt.locking(fh.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(fh, fcntl.LOCK_EX)
+        # Closing the file also releases the lock.
+        yield
+
+
 class ConfigManager:
     """Loads application configuration from YAML and provides typed accessors."""
 
     def __init__(self, config_path: Optional[Path] = None):
-        self.config_path: Path = config_path or CONFIG_FILE
-        self.config: Dict[str, Any] = DEFAULT_CONFIG.copy()
-        self._load()
+        self.config_path: Path = Path(config_path or CONFIG_FILE).absolute()
+        self._lock = threading.RLock()
+        self.config: Dict[str, Any] = {}
+        self.load_config()
 
     def _load(self) -> None:
         if not self.config_path.exists():
@@ -192,10 +215,12 @@ class ConfigManager:
         try:
             with open(self.config_path, "r", encoding="utf-8") as fh:
                 file_cfg = yaml.safe_load(fh) or {}
+            if not isinstance(file_cfg, dict):
+                raise ValueError("Expected a mapping of settings")
             self.config.update(file_cfg)
             self._normalise_paths()
             logger.debug("Configuration loaded from %s", self.config_path)
-        except yaml.YAMLError as exc:
+        except (yaml.YAMLError, ValueError) as exc:
             logger.error(
                 "YAML parse error in %s: %s — using defaults", self.config_path, exc
             )
@@ -206,8 +231,10 @@ class ConfigManager:
 
     def load_config(self) -> None:
         """Reload configuration from disk (alias used by GUI after settings save)."""
-        self.config = DEFAULT_CONFIG.copy()
-        self._load()
+        with self._lock:
+            self.config = deepcopy(DEFAULT_CONFIG)
+            self._load()
+            self._saved = deepcopy(self.config)
 
     def _normalise_paths(self) -> None:
         for key in (
@@ -229,15 +256,37 @@ class ConfigManager:
         return self.config.get(key, default)
 
     def set(self, key: str, value: Any) -> None:
-        self.config[key] = value
+        with self._lock:
+            self.config[key] = value
 
     def save_config(self) -> bool:
         try:
-            content = yaml.dump(self.config, default_flow_style=False, sort_keys=True)
-            _atomic_write_text(self.config_path, content)
-            logger.debug("Configuration saved to %s", self.config_path)
+            with self._lock, _config_write_lock(self.config_path):
+                merged = deepcopy(DEFAULT_CONFIG)
+                if self.config_path.exists():
+                    data = yaml.safe_load(self.config_path.read_text(encoding="utf-8"))
+                    if data is not None and not isinstance(data, dict):
+                        raise ValueError("Expected a mapping of settings")
+                    merged.update(data or {})
+                    # An older window saving its geometry must keep newer music choices.
+                    merged.update(
+                        {
+                            k: v
+                            for k, v in self.config.items()
+                            if v != self._saved.get(k)
+                        }
+                    )
+                else:
+                    merged.update(self.config)
+                content = yaml.safe_dump(
+                    merged, default_flow_style=False, sort_keys=True
+                )
+                _atomic_write_text(self.config_path, content)
+                self.config = merged
+                self._normalise_paths()
+                self._saved = deepcopy(self.config)
             return True
-        except OSError as exc:
+        except (OSError, ValueError, yaml.YAMLError) as exc:
             logger.error("Error saving config: %s", exc)
             return False
 
@@ -303,32 +352,75 @@ class ConfigManager:
         playlists: List[Dict[str, str]] = []
         mc = self.get_music_config()
 
-        if mc.default_playlist.startswith(("https://", "http://")):
-            playlists.append(
-                {"name": "Saved music", "path": mc.default_playlist, "type": "online"}
-            )
-        elif mc.default_playlist and Path(mc.default_playlist).exists():
-            playlists.append(
-                {
-                    "name": "Default Classical Music",
-                    "path": mc.default_playlist,
-                    "type": "local",
-                }
-            )
+        def add(source, name):
+            if not source:
+                return None
+            online = source.startswith(("https://", "http://"))
+            if not online:
+                source = str(self.config_path.parent / Path(source).expanduser())
+            for entry in playlists:
+                if source == entry["path"]:
+                    return entry
+            entry = {
+                "name": name,
+                "path": source,
+                "type": "online" if online else "local",
+            }
+            playlists.append(entry)
+            return entry
 
-        if mc.playlist_dir and Path(mc.playlist_dir).is_dir():
-            for pf in Path(mc.playlist_dir).glob("*.m3u*"):
-                playlists.append({"name": pf.stem, "path": str(pf), "type": "local"})
-
+        default = mc.default_playlist
+        add(
+            default,
+            (
+                "Saved music"
+                if default.startswith(("http://", "https://"))
+                else "Default Classical Music"
+            ),
+        )
+        for source in self.get("classical_music_files", []):
+            add(source, Path(source).stem)
+        if mc.playlist_dir:
+            directory = self.config_path.parent / Path(mc.playlist_dir).expanduser()
+            for pf in sorted(directory.glob("*.m3u*")):
+                add(str(pf), pf.stem)
         if not mc.local_mode:
             for i, url in enumerate(mc.online_playlists):
-                if any(p["path"] == url for p in playlists):
-                    continue
-                playlists.append(
-                    {"name": f"Online Playlist {i + 1}", "path": url, "type": "online"}
-                )
+                add(url, f"Online Playlist {i + 1}")
 
+        # Older settings also accepted a display name in place of a path.
+        selected = self.get("classical_music_selected_playlist")
+        if selected:
+            match = next(
+                (p for p in playlists if selected in (p["path"], p["name"])), None
+            )
+            if match is None:
+                match = add(selected, selected)
+            playlists.remove(match)
+            playlists.insert(0, match)
         return playlists
+
+    def load_music_bookmark(self):
+        path = self.config_path.parent / "data" / "last_music.json"
+        try:
+            bookmark = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(bookmark, dict) or not all(
+                isinstance(bookmark.get(key), str)
+                for key in ("source", "track", "title")
+            ):
+                raise ValueError("Invalid music bookmark")
+            return bookmark
+        except FileNotFoundError:
+            pass
+        except ValueError:
+            _quarantine_file(path, "corrupt")
+        except OSError:
+            logger.warning("Could not read the last song", exc_info=True)
+        return {}
+
+    def save_music_bookmark(self, bookmark):
+        path = self.config_path.parent / "data" / "last_music.json"
+        _atomic_write_text(path, json.dumps(bookmark, ensure_ascii=False))
 
     def validate_config(self) -> List[str]:
         issues: List[str] = []
@@ -397,12 +489,19 @@ SYNC_RETRY_MAX_SECONDS = 6 * 60 * 60
 def _atomic_write_text(path: Path, content: str) -> None:
     """Write text by replacing the target file after a complete temp write."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = path.with_name(f"{path.name}.tmp")
-    with open(temp_path, "w", encoding="utf-8") as fh:
-        fh.write(content)
-        fh.flush()
-        os.fsync(fh.fileno())
-    os.replace(temp_path, path)
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent, delete=False
+        ) as fh:
+            temp_path = Path(fh.name)
+            fh.write(content)
+            fh.flush()
+            os.fsync(fh.fileno())
+        os.replace(temp_path, path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
 
 def _quarantine_file(path: Path, suffix: str) -> Optional[Path]:
@@ -642,8 +741,10 @@ class SessionManager:
         delay = self.config.get("auto_start_delay", 2)
 
         def _start():
-            time.sleep(delay)
-            if not self._stop_event.is_set():
+            if (
+                not self._stop_event.wait(delay)
+                and self.state == SessionState.COMPLETED
+            ):
                 self.start_session(next_type, duration)
 
         threading.Thread(target=_start, daemon=True).start()
@@ -662,24 +763,9 @@ class SessionManager:
                 SessionType.SHORT_BREAK,
                 self.config.get("short_break_mins", 5),
             )
-        # After breaks: short breaks auto-start work, long breaks require manual start
-        if self.session_type == SessionType.SHORT_BREAK:
-            # Always auto-start work session after short break
-            return (
-                True,
-                SessionType.WORK,
-                self.config.get("work_mins", 25),
-            )
-        elif self.session_type == SessionType.LONG_BREAK:
-            # Never auto-start after long break - require manual start
-            return (
-                False,
-                SessionType.WORK,
-                self.config.get("work_mins", 25),
-            )
-        # Default behavior for custom or other types
         return (
-            self.config.get("auto_start_work", False),
+            self.session_type == SessionType.SHORT_BREAK
+            or self.config.get("auto_start_work", False),
             SessionType.WORK,
             self.config.get("work_mins", 25),
         )
@@ -844,6 +930,7 @@ class SessionManager:
         return stats
 
     def cleanup(self):
+        self._stop_event.set()
         if self.state in (SessionState.RUNNING, SessionState.PAUSED):
             self.stop_session()
         else:

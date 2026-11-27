@@ -2,14 +2,48 @@
 
 import logging
 import queue
+import subprocess
+import sys
 import threading
 import tkinter as tk
+from pathlib import Path
+from urllib.parse import parse_qs, unquote, urlsplit
 from tkinter import ttk
 
 
 def clock_text(seconds):
     seconds = max(0, int(seconds or 0))
     return f"{seconds // 60}:{seconds % 60:02d}"
+
+
+def source_label(source):
+    if not source:
+        return ""
+    if not source.startswith(("https://", "http://")):
+        return Path(source).name
+    parsed = urlsplit(source)
+    query = parse_qs(parsed.query)
+    if parsed.hostname == "youtu.be" or (parsed.hostname or "").split(".")[-2:] == [
+        "youtube",
+        "com",
+    ]:
+        playlist = query.get("list", [""])[0]
+        if playlist.startswith("RD"):
+            return f"YouTube Mix · {playlist}"
+        if playlist:
+            return f"YouTube playlist · {playlist}"
+        media = (query.get("v") or [parsed.path.strip("/")])[0]
+        return f"YouTube · {media}" if media else "YouTube"
+    return unquote(parsed.path.rstrip("/").rsplit("/", 1)[-1]) or parsed.hostname
+
+
+def open_chrome(source):
+    """Open the user's normal Chrome session with its registered launcher."""
+    from .radio_plugins.focus.yt_dlp_plugins.chrome_connection import (
+        open_chrome as launch,
+    )
+
+    launch(source)
 
 
 class MusicPanel(tk.Frame):
@@ -30,6 +64,15 @@ class MusicPanel(tk.Frame):
         self.accent = "#94d8c1" if self.dark else "#176f58"
         super().__init__(parent, bg=self.bg, padx=12, pady=10)
         self.controller = controller
+        self._config = config
+        self._connection_window = None
+        self._connection_prompted = False
+        self._choose_music = add_link
+        self._recovery_window = None
+        self._shown_failure = None
+        self._updater = None
+        self._update_attempt = None
+        self.selected_source = ""
         self.on_action = on_action
         self._worker_lock = threading.Lock()
         self._worker = None
@@ -40,16 +83,26 @@ class MusicPanel(tk.Frame):
         self._seek_drag = False
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
-        self._label("FOCUS AUDIO", 10, bold=True).grid(row=0, column=0, sticky="w")
+        header = tk.Frame(self, bg=self.bg)
+        header.grid(row=0, column=0, columnspan=2, sticky="ew")
+        header.columnconfigure(0, weight=1)
+        self._label("Music", 12, bold=True).grid(
+            in_=header, row=0, column=0, sticky="w"
+        )
         self.status_label = self._label("Ready", 10, color=self.accent)
-        self.status_label.grid(row=0, column=1, sticky="e")
-        self.title_label = self._label("Choose your focus music", 13, bold=True)
+        self.status_label.grid(in_=header, row=0, column=1, padx=8)
+        options = ttk.Menubutton(header, text="Options", width=7)
+        options.grid(row=0, column=2)
+        menu = tk.Menu(options, tearoff=False)
+        options.configure(menu=menu)
+        self.title_label = self._label("Choose music", 13, bold=True)
         self.title_label.configure(wraplength=320, justify="left")
         self.title_label.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 2))
-        self.source_label = self._label(
-            "A little space to concentrate.", 9, color=self.muted
-        )
+        self.source_label = self._label("", 9, color=self.muted)
         self.source_label.grid(row=2, column=0, columnspan=2, sticky="w")
+        self.connect_button = ttk.Button(
+            self, text="Connect my personal Mix…", command=self._connect_chrome
+        )
 
         timeline = tk.Frame(self, bg=self.bg)
         timeline.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(6, 0))
@@ -138,25 +191,36 @@ class MusicPanel(tk.Frame):
         )
         self.playlist_combo.grid(row=6, column=0, sticky="ew", pady=(8, 0), padx=(0, 6))
         self.playlist_combo.bind("<<ComboboxSelected>>", select_playlist)
-        ttk.Button(self, text="Add link…", command=add_link).grid(
+        ttk.Button(self, text="Change…", command=add_link).grid(
             row=6, column=1, sticky="e", pady=(8, 0)
         )
-        self.device_button = ttk.Menubutton(self, text="Output: System default")
-        self.device_menu = tk.Menu(self.device_button, tearoff=False)
-        self.device_button.configure(menu=self.device_menu)
-        self.device_button.grid(row=7, column=0, sticky="ew", pady=(6, 0), padx=(0, 6))
-        self.session_button = ttk.Menubutton(self, text="YouTube: Guest")
-        session_menu = tk.Menu(self.session_button, tearoff=False)
+        self.device_menu = tk.Menu(menu, tearoff=False)
+        menu.add_cascade(label="Audio output", menu=self.device_menu)
+        self.device_var = tk.StringVar(value="auto")
+        session_menu = tk.Menu(menu, tearoff=False)
+        menu.add_cascade(label="YouTube", menu=session_menu)
+        self.browser_var = tk.StringVar(value=config.get("youtube_browser", ""))
         if select_session:
-            session_menu.add_command(
-                label="Chrome session (local cookies)",
-                command=lambda: select_session("chrome"),
+            session_menu.add_radiobutton(
+                label="Chrome session",
+                value="chrome",
+                variable=self.browser_var,
+                command=lambda: (
+                    self._connect_chrome()
+                    if config.get("chrome_mix_connection") is False
+                    and self._selected_mix()
+                    else select_session("chrome")
+                ),
             )
             session_menu.add_command(
-                label="Play without sign-in", command=lambda: select_session("")
+                label="Connect Chrome…", command=self._connect_chrome
             )
-        self.session_button.configure(menu=session_menu)
-        self.session_button.grid(row=7, column=1, sticky="ew", pady=(6, 0))
+            session_menu.add_radiobutton(
+                label="Play without sign-in",
+                value="",
+                variable=self.browser_var,
+                command=lambda: select_session(""),
+            )
         self._devices = None
         self.bind(
             "<Configure>",
@@ -194,6 +258,10 @@ class MusicPanel(tk.Frame):
                 self._worker = threading.Thread(target=self._run_actions, daemon=True)
                 self._worker.start()
 
+    @property
+    def busy(self):
+        return self._actions.unfinished_tasks > 0 or self._updater is not None
+
     def _run_actions(self):
         while True:
             action = self._actions.get()
@@ -209,6 +277,8 @@ class MusicPanel(tk.Frame):
                 logging.getLogger(__name__).warning(
                     "Music action failed: %s", type(exc).__name__
                 )
+            finally:
+                self._actions.task_done()
 
     def toggle(self):
         state = self.controller.playback_state
@@ -238,6 +308,271 @@ class MusicPanel(tk.Frame):
         self._seek_drag = False
         self.run(lambda: self.controller.seek(value))
 
+    def _dismiss_recovery(self):
+        if self._recovery_window is not None:
+            self._recovery_window.destroy()
+            self._recovery_window = None
+
+    def _selected_mix(self):
+        from .system import youtube_source_kind
+
+        return youtube_source_kind(self.selected_source) == "radio"
+
+    def _connect_chrome(self):
+        from tkinter import messagebox
+        from .chrome_setup import prepare_extension
+        from .system import _CHROME_CONNECTION_ERRORS, _CHROME_SIGNED_OUT
+
+        if (
+            self._connection_window is not None
+            and self._connection_window.winfo_exists()
+        ):
+            self._connection_window.lift()
+            return
+        source = self.selected_source
+        if not self._selected_mix():
+            messagebox.showinfo(
+                "Personal Mix",
+                "Choose a YouTube Mix under Music → Change… first.",
+                parent=self,
+            )
+            return
+        try:
+            folder = prepare_extension(self._config)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Chrome connection", str(exc), parent=self)
+            return
+        window = self._connection_window = tk.Toplevel(self)
+        self._connection_prompted = True
+        window.title("Personal Mix")
+        window.transient(self.winfo_toplevel())
+        frame = ttk.Frame(window, padding=14)
+        frame.pack(fill="both", expand=True)
+        notice = tk.StringVar()
+        ttk.Label(frame, textvariable=notice, wraplength=320).pack(
+            anchor="w", pady=(0, 8)
+        )
+        button = ttk.Button(frame, text="Close", command=window.destroy)
+        button.pack(anchor="e")
+        window.bind("<Escape>", lambda event: window.destroy())
+
+        def play():
+            window.destroy()
+            if self.selected_source == source:
+                if (
+                    self.controller.is_playing
+                    and self.controller.current_playlist == source
+                ):
+                    self.run(lambda: self.controller.restart_youtube_session(source))
+                elif not self.controller.is_playing:
+                    self.run(self.controller.start_music)
+
+        def sign_in():
+            try:
+                open_chrome("https://www.youtube.com/")
+            except OSError:
+                notice.set("Open YouTube in Google Chrome to sign in.")
+            button.configure(text="Check connection", command=check)
+
+        def finish(message, error):
+            if not window.winfo_exists():
+                return
+            if message is None:
+                window.destroy()
+                return
+            notice.set(message)
+            label, action = "Done", window.destroy
+            if error in (
+                _CHROME_CONNECTION_ERRORS["extension"],
+                _CHROME_CONNECTION_ERRORS["pairing"],
+            ):
+                notice.set("Chrome needs Focus Timer Mix to share your song order.")
+                label, action = "Set up in Chrome", lambda: check(install=True)
+            elif error == _CHROME_SIGNED_OUT:
+                notice.set("Sign in to YouTube to use your personal Mix.")
+                label, action = "Open YouTube", sign_in
+            elif error:
+                label, action = "Try again", check
+            elif self.selected_source == source and (
+                not self.controller.is_playing
+                or self.controller.get_status().get("public_mix")
+            ):
+                notice.set("Your personal Mix is ready.")
+                label, action = (
+                    "Use my Mix" if self.controller.is_playing else "Play my Mix"
+                ), play
+            button.configure(text=label, command=action)
+
+        def check(install=False):
+            notice.set(
+                "Waiting for Chrome setup…"
+                if install
+                else "Connecting to your personal Mix…"
+            )
+            button.configure(text="Close", command=window.destroy)
+
+            def connect():
+                error = None
+                try:
+                    message = self.controller.connect_chrome_mix(
+                        source, folder, install=install
+                    )
+                except (OSError, ValueError) as exc:
+                    message = error = str(exc)
+                if not self._closed:
+                    try:
+                        self.after(0, finish, message, error)
+                    except (tk.TclError, RuntimeError):
+                        pass
+
+            threading.Thread(target=connect, daemon=True).start()
+
+        check()
+
+    def _update_helper(self, attempt):
+        self._update_attempt = attempt
+        self._update_button.configure(state="disabled")
+        self._recovery_message.set("Updating the YouTube playback helper…")
+        if self._updater is not None:
+            return
+        try:
+            self._updater = subprocess.Popen(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "--disable-pip-version-check",
+                    "--no-input",
+                    "install",
+                    "--upgrade",
+                    "--only-binary=:all:",
+                    "--retries",
+                    "1",
+                    "--timeout",
+                    "15",
+                    "yt-dlp[default]",
+                ],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+        except OSError:
+            self._update_button.configure(state="normal")
+            self._recovery_message.set("Could not start the playback helper update.")
+            return
+        if self.on_action:
+            self.on_action()
+
+    def _refresh_recovery(self, status):
+        attempt = status.get("attempt", 0)
+        failed = status["state"] == "error"
+        if self._updater is not None and self._updater.poll() is not None:
+            code = self._updater.returncode
+            self._updater = None
+            if failed and attempt == self._update_attempt and self._recovery_window:
+                if code == 0:
+                    self._dismiss_recovery()
+                    self.after_idle(
+                        lambda: self.run(
+                            lambda: self.controller.retry_failed_attempt(attempt)
+                        )
+                    )
+                    return
+                self._recovery_message.set(
+                    "The helper update failed. Check your connection and try again."
+                )
+                self._update_button.configure(state="normal")
+        if not failed:
+            self._dismiss_recovery()
+            self._shown_failure = None
+            return
+        if self._shown_failure == attempt:
+            return
+        self._shown_failure = attempt
+        self._dismiss_recovery()
+        self._show_recovery(status, attempt)
+
+    def _show_recovery(self, status, attempt):
+        import webbrowser
+        from .system import (
+            _CHROME_CONNECTION_ERRORS,
+            _CHROME_COOKIE_ERROR,
+            youtube_source_kind,
+        )
+
+        window = self._recovery_window = tk.Toplevel(self)
+        window.title("Music couldn’t play")
+        window.transient(self.winfo_toplevel())
+        window.protocol("WM_DELETE_WINDOW", self._dismiss_recovery)
+        window.bind("<Escape>", lambda event: self._dismiss_recovery())
+        frame = ttk.Frame(window, padding=14)
+        frame.pack(fill="both", expand=True)
+        self._recovery_message = tk.StringVar(value=status["error"])
+        ttk.Label(frame, textvariable=self._recovery_message, wraplength=290).pack(
+            anchor="w", pady=(0, 8)
+        )
+
+        def action(label, callback):
+            def invoke():
+                self._dismiss_recovery()
+                callback()
+
+            ttk.Button(frame, text=label, command=invoke).pack(fill="x", pady=2)
+
+        source = self.selected_source or status.get("current_playlist") or ""
+        chrome_mix = (
+            youtube_source_kind(source) == "radio"
+            and status.get("youtube_browser") == "chrome"
+        )
+        connection_failure = chrome_mix and (
+            status["error"] in _CHROME_CONNECTION_ERRORS.values()
+            or status["error"] == _CHROME_COOKIE_ERROR
+            or "signed-out Mix" in status["error"]
+        )
+        if connection_failure:
+            action("Connect Chrome…", self._connect_chrome)
+        if chrome_mix:
+
+            def open_mix():
+                try:
+                    open_chrome(source)
+                except OSError:
+                    self._recovery_message.set(
+                        "Chrome couldn’t open. Check that Google Chrome is installed."
+                    )
+
+            ttk.Button(frame, text="Open Mix in Chrome", command=open_mix).pack(
+                fill="x", pady=2
+            )
+        elif source.startswith(("https://", "http://")):
+            action("Open in browser", lambda: webbrowser.open(source))
+        if status.get("mpv_available") is False:
+            action(
+                "Install mpv…", lambda: webbrowser.open("https://mpv.io/installation/")
+            )
+        elif youtube_source_kind(source) and not connection_failure:
+            if (
+                sys.prefix != sys.base_prefix
+                and sys.version_info >= (3, 11)
+                and not getattr(sys, "frozen", False)
+            ):
+                self._update_button = ttk.Button(
+                    frame,
+                    text="Update YouTube helper and retry",
+                    command=lambda: self._update_helper(attempt),
+                )
+                self._update_button.pack(fill="x", pady=2)
+            else:
+                action(
+                    "Update YouTube helper…",
+                    lambda: webbrowser.open(
+                        "https://github.com/yt-dlp/yt-dlp/wiki/Installation"
+                    ),
+                )
+        action("Choose music…", self._choose_music)
+        action("Retry", lambda: self.run(self.controller.start_music))
+
     def refresh(self, status):
         state = status["state"]
         labels = {
@@ -254,52 +589,75 @@ class MusicPanel(tk.Frame):
                 else labels.get(state, "Ready")
             )
         )
+        selected = self.selected_source
+        bookmark = status.get("bookmark", {})
+        remembered = bookmark.get("title") if selected == bookmark.get("source") else ""
         self.title_label.configure(
             text=status.get("current_track")
-            or (
-                "Finding your music…"
-                if state == "loading"
-                else "Choose your focus music"
-            )
+            or remembered
+            or source_label(selected)
+            or "Choose music"
         )
-        source = (
-            "YouTube" if "youtu" in (status.get("current_playlist") or "") else "Music"
-        )
+        details = []
         if status.get("source_kind") == "radio":
-            source = "YouTube Radio"
-        count = status.get("playlist_count", 0)
-        if count > 1:
-            source += f" · {status.get('playlist_index', 1)} / {count}"
-        browser = status.get("youtube_browser", "")
-        self.session_button.configure(
-            text="YouTube: Chrome" if browser == "chrome" else "YouTube: Guest"
-        )
-        if browser == "chrome" and source.startswith("YouTube"):
-            source += " · Chrome"
-        self.source_label.configure(
-            text=(
-                status["error"]
-                if state == "error"
-                else f"{source} · {status.get('route', 'Auto')} connection"
+            details.append(
+                "Public YouTube Mix"
+                if status.get("public_mix")
+                else "Personal YouTube Mix"
             )
-        )
+        if (
+            (
+                status.get("public_mix")
+                or (not status["is_playing"] and self._selected_mix())
+            )
+            and status.get("youtube_browser") == "chrome"
+            and self._config.get("chrome_mix_connection") is False
+        ):
+            self.connect_button.grid(
+                row=7, column=0, columnspan=2, sticky="w", pady=(6, 0)
+            )
+            if (
+                state == "playing"
+                and not self._connection_prompted
+                and self._selected_mix()
+                and selected == status.get("current_playlist")
+            ):
+                self._connection_prompted = True
+                self.after_idle(self._connect_chrome)
+        else:
+            self.connect_button.grid_remove()
+        if status.get("guest_playback") and status["is_playing"]:
+            details.append("Playing as guest")
+        count = status.get("playlist_count", 0)
+        if status["is_playing"] and count > 1:
+            details.append(f"Track {status.get('playlist_index', 1)} of {count}")
+        if status.get("route") == "Proxy" and status["is_playing"]:
+            details.append("Proxy")
+        self.browser_var.set(status.get("youtube_browser", ""))
+        detail = status.get("error") if state == "error" else " · ".join(details)
+        if state in ("playing", "paused") and status.get("up_next"):
+            detail += "\nUp next · " + status["up_next"]
+        if detail:
+            self.source_label.configure(text=detail, justify="left")
+            self.source_label.grid()
+        else:
+            self.source_label.grid_remove()
         self.play_button.configure(
-            text=(
-                "Pause"
-                if state == "playing"
-                else (
-                    "Resume"
-                    if state == "paused"
-                    else "Retry" if state == "error" else "Play"
-                )
+            text={"playing": "Pause", "paused": "Resume", "error": "Retry"}.get(
+                state, "Play"
             ),
             state="disabled" if state == "loading" else "normal",
         )
         active = status["is_playing"]
         self.stop.configure(state="normal" if active else "disabled")
         queued = status.get("playlist_count", 0) > 1
-        for button in (self.previous, self.next):
-            button.configure(state="normal" if active and queued else "disabled")
+        index = status.get("playlist_index", 1)
+        self.previous.configure(
+            state="normal" if active and queued and index > 1 else "disabled"
+        )
+        self.next.configure(
+            state="normal" if active and queued and index < count else "disabled"
+        )
         duration = status.get("duration", 0)
         position = status.get("position", 0) if active else 0
         self.elapsed.configure(text=clock_text(position))
@@ -322,15 +680,16 @@ class MusicPanel(tk.Frame):
         if devices != self._devices:
             self._devices = list(devices)
             self.device_menu.delete(0, "end")
-            for device in devices:
-                self.device_menu.add_command(
+            for device in devices or [
+                {"name": "auto", "description": "System default"}
+            ]:
+                self.device_menu.add_radiobutton(
+                    variable=self.device_var,
+                    value=device["name"],
                     label=device["description"],
                     command=lambda name=device["name"]: self.run(
                         lambda: self.controller.set_audio_device(name)
                     ),
                 )
-        chosen = next(
-            (d["description"] for d in devices if d["name"] == status.get("device")),
-            "System default",
-        )
-        self.device_button.configure(text=f"Output: {chosen}")
+        self.device_var.set(status.get("device") or "auto")
+        self._refresh_recovery(status)

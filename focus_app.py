@@ -13,7 +13,7 @@ def main() -> None:
     from main import _detach_gui_on_windows, UltimateFocusLauncher
 
     _detach_gui_on_windows()
-    UltimateFocusLauncher().launch_gui()
+    UltimateFocusLauncher.launch_gui()
 
 
 if __name__ == "__main__":

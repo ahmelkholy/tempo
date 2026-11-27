@@ -11,12 +11,11 @@ Keep this checkout and its virtual environment in place. Run the installer again
 if you move them. Drag the app into the Dock for access while working in other
 applications. The existing `focus gui` command also works from Terminal.
 
-The window keeps the timer, today's tasks, and music together. Use **YouTube
-link…** to save a video or playlist, then **Play music**. Music continues when
+The window keeps the timer, today's tasks, and music together. Use **Music → Change…** to play a link or open a local audio file or playlist. Music continues when
 you switch applications or minimize the window. Quitting the app stops it.
 Settings and statistics are under **More**. No login service is installed.
 
-Music requires mpv and yt-dlp. Finder launches can discover Homebrew tools in
+Local music uses mpv. For YouTube, the player first looks for yt-dlp in the app’s Python environment. Finder launches can discover Homebrew tools in
 `/opt/homebrew/bin` and `/usr/local/bin`. On macOS, each playback checks the
 system proxy settings. If a configured localhost proxy is not listening, it
 connects directly. Both yt-dlp and mpv use the same route. If playback fails
@@ -39,9 +38,7 @@ use Ctrl instead. Zoom and window dimensions are saved separately.
 
 The music card shows track time, buffering and pause state. Drag the timeline
 to seek, release the volume slider to apply a level, or choose an audio device
-under **Output**. Player events update the card without background polling on
-macOS and Linux. Windows retains playback controls, but live timeline and output
-updates are not implemented there yet.
+under **Options → Audio output**. Player events drive the controls on macOS, Linux, and Windows.
 
 The task header shows **NORMAL** or **INSERT**. Click **? keys**, use **More →
 Keyboard shortcuts**, or press **? / F1** to see the full guide.
@@ -62,7 +59,7 @@ In task entry, **Enter** saves and **Esc** cancels, returning to Normal mode.
 Text fields retain their normal editing keys. Starting focus from the keyboard
 does not replace a running or paused session. Delete requires a selected task.
 
-If a source fails, the card shows the reason and a **Retry** button. Adding a
+If playback fails, a popup shows the reason. Choose **Open in browser** for an online link, **Choose music…** for a different source, or **Retry**. For YouTube, **Update YouTube helper and retry** updates yt-dlp on demand in the app’s Python 3.11+ virtual environment. Other installs link to the updater instructions. Adding a
 new link or selecting another playlist starts that source immediately, including
 after an earlier failure. Retry uses the saved current selection. An exact link
 pasted twice is repaired; two different URLs in one field are rejected. Deleted
@@ -70,34 +67,43 @@ or private YouTube playlists must be replaced with an accessible source.
 
 The text launcher accepts `q`, `quit`, `exit`, or `9` to close.
 
-YouTube radio links such as `watch?v=…&list=RD…&start_radio=1` load the mix,
-including subsequent tracks. The music card shows **YouTube Radio** and the
-current track number. Radio loads up to 50 recommendations at a time in their
-original order. With repeat enabled, the app requests a fresh mix when the
-queue ends and skips the seed track on continuation. Each request reloads the
-selected browser session and current proxy route. Stop cancels continuation;
-network failures do not trigger an unbounded retry loop. YouTube may still return
-previous recommendations. Set `radio_refresh: false` to loop the current batch
-instead, following the existing repeat setting.
-Ordinary playlist links, including watch links containing `list=PL…`, also load
-as playlists rather than just their first video.
+For your personal YouTube Mix, sign in to YouTube in Google Chrome and choose
+**Music → Options → YouTube → Chrome session**. Press **Play** to load the current
+Mix for that session. **Up next** shows the next title in YouTube’s order. With
+repeat enabled, the player follows the next watch link YouTube supplies for the
+same Mix. Reopening the app keeps the last song selected. Starting playback fetches
+the live Mix at that song. YouTube can change the recommendations between sessions.
 
-For account-personalised radio, choose **YouTube: Guest → Chrome session (local
-cookies)** in the music card. Sign in to the intended YouTube account in Chrome
-first. The app asks yt-dlp to read Chrome's local session only for YouTube URLs;
-macOS may request Keychain access. It does not export cookies into this project.
-Choose **Play without sign-in** to disconnect the session preference. This follows
-yt-dlp's [browser-session support](https://github.com/yt-dlp/yt-dlp/wiki/FAQ).
+If Chrome is disconnected, **Play** loads the **Public YouTube Mix** for the same
+link, starting at the selected song. **Next** and **Prev** follow that queue.
+When you chose a personal Mix, a small timer popup checks your Chrome connection
+once during public playback. You can also open it with **Connect my personal
+Mix…**. An existing connection works automatically. When the player is idle, the
+popup offers **Play my Mix**.
 
-Radio suggestions depend on the signed-in account. YouTube can regenerate the mix,
-so authenticated radio need not reproduce the exact queue already open in Chrome.
-Use a saved playlist when the exact set and order of songs matter.
+For a first-time installation, the popup offers **Set up in Chrome**. On the
+Focus Timer Mix page in Chrome, click **Copy folder and open Extensions**. Turn on **Developer
+mode**, click **Load unpacked**, press **⌘⇧G**, paste, press Return, and select the
+folder. The setup page stays open and checks the Mix automatically.
 
+Once connected, click **Use my Mix** to switch an active public Mix to your
+account at the current song and position. The same connection works with the other Mix links you save under
+**Change…**.
+
+The connection opens a temporary local tab when the timer needs a new page of
+recommendations. Chrome sends the ordered song IDs, titles, and Mix links. The
+timer plays public audio streams with mpv and controls breaks and Next. Tracks that
+require account access for the audio itself may still be unavailable. Keep the
+extension enabled in the Chrome profile you use for YouTube. To disconnect, remove
+**Focus Timer Mix** in Chrome and select **Play without sign-in** in the timer.
+**Open Mix in Chrome** starts separate browser playback.
+
+With `radio_refresh: false`, repeat loops the loaded page. Ordinary playlist
+links, including watch links containing `list=PL…`, also load as playlists.
 
 The YouTube session preference, selected radio, and GUI zoom are stored in
 `config.yml` and apply through `focus gui` and the installed Mac application on
-every launch. No helper launch script is needed. Music starts when requested or
-when a work session starts; installing the launcher adds no login service.
+every launch. No helper launch script is needed. On reopen, the last song is selected. Press **Play** or start work to listen. With break pausing enabled, both short and long breaks pause the player and continue from the same timestamp when the break ends.
 
 The app does not show a floating timer or raise its window when you switch
 applications, minimise it, or finish a session. Restore it explicitly to interact.
