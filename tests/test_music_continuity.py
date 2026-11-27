@@ -91,6 +91,8 @@ def test_real_player_break_and_reordered_playlist_on_reopen(tmp_path):
     try:
         assert music.start_music()
         wait_for(lambda: music.bookmark.get("track") == songs[0])
+        # The Next button is enabled after mpv reports the loaded playlist.
+        wait_for(lambda: music.get_status()["playlist_count"] == len(songs))
         assert music.next_track()
         wait_for(lambda: music.bookmark.get("track") == songs[1])
         assert music.seek(7)
