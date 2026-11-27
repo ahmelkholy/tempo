@@ -1,177 +1,125 @@
-name: CI/CD Pipeline
-
+name: Desktop release checks
 on:
-  push:
-    branches: [main, develop]
   pull_request:
-    branches: [main]
+  push:
+    branches: [master, develop, 'release/**']
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.8, 3.9, "3.10", "3.11", "3.12"]
-
+  package:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
+          python-version: '3.11'
+      - run: python -m pip install build twine flake8 black==26.3.1 bandit
+      - run: flake8 main.py focus_app.py build.py src tests --select=E9,F63,F7,F82 --show-source
+      - run: black --check main.py focus_app.py build.py src tests
+      - run: bandit -r src -lll -q
+      - name: Build wheel and source archive
+        working-directory: ${{ runner.temp }}
+        run: python -m build "$GITHUB_WORKSPACE" --outdir "$GITHUB_WORKSPACE/dist"
+      - run: twine check dist/*
+      - name: Install and check the distributed wheel
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest pytest-cov flake8 black mypy
-
-      - name: Lint with flake8
-        run: |
-          # Stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # Exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-      - name: Check code formatting with black
-        run: |
-          black --check --diff src/ tests/
-
-      - name: Type checking with mypy
-        run: |
-          mypy src/ --ignore-missing-imports
-
-      - name: Test with pytest
-        run: |
-          pytest tests/ --cov=src --cov-report=xml
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+          python -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          focus --version
+          python -m pip check
+          python -c "from pathlib import Path; import src; p=Path(src.__file__).parent; assert (p/'focus_track.lua').is_file() and (p/'chrome_mix_extension/manifest.json').is_file() and (p/'radio_plugins/focus/yt_dlp_plugins/extractor/focus_radio.py').is_file()"
+      - uses: actions/upload-artifact@v7
         with:
-          file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
+          name: python-package
+          path: dist/*
+          if-no-files-found: error
 
-  integration-test:
-    runs-on: ${{ matrix.os }}
+  desktop:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
+        os: [ubuntu-22.04, windows-2022, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 55
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
-          python-version: "3.10"
-
-      - name: Install system dependencies
-        run: |
-          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            sudo apt-get update
-            sudo apt-get install -y mpv
-          elif [ "${{ matrix.os }}" == "macos-latest" ]; then
-            brew install mpv
-          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            choco install mpv
-          fi
+          python-version: '3.12'
+          cache: pip
+      - name: Install Linux player and display
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y mpv xvfb xauth
+      - name: Install macOS player
+        if: runner.os == 'macOS'
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+        run: brew list mpv >/dev/null 2>&1 || brew install mpv
+      - name: Install Windows player
+        if: runner.os == 'Windows'
+        run: choco install mpv -y --no-progress
+      - name: Install application and test tools
+        run: python -m pip install . pytest "pyinstaller>=6.11" build
+      - name: Run desktop tests with real mpv
         shell: bash
-
-      - name: Install Python dependencies
+        env:
+          PYTHONUTF8: '1'
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Run integration tests
-        run: |
-          python main.py --check-deps
-          python main.py --sys-info
+          export FOCUS_HOME="$RUNNER_TEMP/focus-ci"
+          mpv --version
           python -m compileall -q main.py focus_app.py src tests
+          python -m pip check
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            xvfb-run -a python -m pytest -q
+          else
+            python -m pytest -q
+          fi
+      - name: Build native desktop archive
+        run: python build.py
+      - name: Start the packaged GUI and check its helpers
         shell: bash
-
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+        run: |
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            app="dist/Ultimate Focus.app/Contents/MacOS/Ultimate Focus"
+            tools="dist/Ultimate Focus.app/Contents/Helpers"
+          else
+            app="dist/Ultimate Focus/Ultimate Focus"
+            tools="dist/Ultimate Focus/player-tools"
+          fi
+          if [[ "$RUNNER_OS" == Windows ]]; then app="$app.exe"; fi
+          "$tools/yt-dlp" --version
+          "$tools/deno" --version
+          if [[ "$RUNNER_OS" == Linux ]]; then xvfb-run -a "$app" --self-test; else "$app" --self-test; fi
+      - uses: actions/upload-artifact@v7
         with:
-          python-version: "3.10"
-
-      - name: Install security tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install safety bandit
-
-      - name: Check dependencies for vulnerabilities
-        run: |
-          safety check
-
-      - name: Run security linting
-        run: |
-          bandit -r src/
-
-  build:
-    needs: [test, integration-test, security]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-
-      - name: Install build dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine
-
-      - name: Build package
-        run: |
-          python -m build
-
-      - name: Check package
-        run: |
-          twine check dist/*
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: dist
-          path: dist/
+          name: native-${{ matrix.os }}
+          path: dist/ultimate-focus-timer-*
+          if-no-files-found: error
+          compression-level: 0
 
   release:
-    needs: build
-    runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-
+    needs: [desktop, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v3
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
         with:
-          name: dist
-          path: dist/
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: dist/*
-          generate_release_notes: true
+          path: assets
+          merge-multiple: true
+      - name: Publish checked archives
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    # Uncomment to publish to PyPI
-    # - name: Publish to PyPI
-    #   uses: pypa/gh-action-pypi-publish@release/v1
-    #   with:
-    #     user: __token__
-    #     password: ${{ secrets.PYPI_API_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -c "import os, runpy; assert os.environ['GITHUB_REF_NAME'] == 'v' + runpy.run_path('src/__version__.py')['__version__']"
+          cd assets
+          test "$(find . -maxdepth 1 -type f | wc -l)" -eq 6
+          sha256sum * > SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --title "Ultimate Focus Timer $GITHUB_REF_NAME" --notes-file "$GITHUB_WORKSPACE/docs/RELEASE.md" *
+          gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

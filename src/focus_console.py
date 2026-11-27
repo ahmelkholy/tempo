@@ -62,7 +62,9 @@ class ConsoleInterface:
             self.music_controller.start_music()
         elif session_type in (SessionType.SHORT_BREAK, SessionType.LONG_BREAK):
             self.music_controller.pause_for_break()
-        self.notification_manager.show_session_start(session_type.value, duration_minutes)
+        self.notification_manager.show_session_start(
+            session_type.value, duration_minutes
+        )
 
     def _on_session_completed(self, session_type, duration_minutes):
         self.session_stats["sessions_completed"] += 1

@@ -187,9 +187,11 @@ class GoogleIntegration:
             )
 
         resolved_target = self.credentials_file.resolve()
-        with open(resolved_target, "w", encoding="utf-8") as target_file:
-            json.dump(parsed, target_file, indent=2, ensure_ascii=False)
-            target_file.write("\n")
+        from .core import _atomic_write_text
+
+        _atomic_write_text(
+            resolved_target, json.dumps(parsed, indent=2, ensure_ascii=False) + "\n"
+        )
         logger.info("Saved Google credentials file to %s", resolved_target)
         return resolved_target
 
@@ -197,8 +199,9 @@ class GoogleIntegration:
         """Persist the current OAuth token."""
         if not self.creds:
             raise RuntimeError("Cannot save an empty Google credential set")
-        with open(self.token_file, "wb") as token:
-            pickle.dump(self.creds, token)
+        from .core import _atomic_write_bytes
+
+        _atomic_write_bytes(self.token_file, pickle.dumps(self.creds))
 
     def _quarantine_token(self, reason: str) -> Optional[Path]:
         """Move an unusable OAuth token aside so startup stops retrying it."""

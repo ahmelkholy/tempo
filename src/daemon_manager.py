@@ -4,7 +4,6 @@ Daemon Manager - Start/stop HTTP daemon from GUI
 """
 
 import logging
-import os
 import subprocess
 import sys
 import threading
@@ -13,7 +12,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from .system import DAEMON_PID_FILE as APP_DAEMON_PID_FILE
-from .system import PROJECT_ROOT
+from .system import LOG_DIR, PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -79,43 +78,6 @@ class DaemonManager:
         except Exception:
             return False
 
-    def _kill_stale_daemon(self):
-        """Kill any stale daemon process using the port"""
-        try:
-            # Try to read PID from file
-            if self.DAEMON_PID_FILE.exists():
-                try:
-                    pid = int(self.DAEMON_PID_FILE.read_text().strip())
-                    logger.info(f"Killing stale daemon process (PID: {pid})")
-                    # Windows: use taskkill
-                    if sys.platform == "win32":
-                        subprocess.run(
-                            ["taskkill", "/PID", str(pid), "/F"],
-                            capture_output=True,
-                            timeout=5,
-                        )
-                    else:
-                        # Unix: use kill
-                        os.kill(pid, 9)
-                    time.sleep(1)  # Wait for port to be released
-                except (ValueError, OSError, subprocess.TimeoutExpired):
-                    pass
-
-            # Also try HTTP stop request
-            try:
-                import requests
-
-                requests.post(
-                    f"http://{self.DAEMON_HOST}:{self.DAEMON_PORT}/stop",
-                    timeout=1.0,
-                )
-            except Exception:
-                pass
-
-            time.sleep(0.5)  # Extra wait for socket cleanup
-        except Exception as e:
-            logger.warning(f"Could not kill stale daemon: {e}")
-
     def _resolve_python_executable(self) -> str:
         """Prefer a windowless Python executable on Windows for daemon launch."""
         current_executable = Path(sys.executable)
@@ -153,16 +115,18 @@ class DaemonManager:
             logger.info("Starting daemon...")
             self._set_status("starting")
 
-            # Kill any stale daemon first
-            self._kill_stale_daemon()
-
             python_exe = self._resolve_python_executable()
 
             # Start daemon subprocess - capture stderr for debugging
-            log_file = PROJECT_ROOT / "daemon.log"
-            with open(log_file, "w") as logf:
+            LOG_DIR.mkdir(parents=True, exist_ok=True)
+            log_file = LOG_DIR / "daemon.log"
+            with open(log_file, "a") as logf:
                 self._daemon_process = subprocess.Popen(
-                    [str(python_exe), "-m", "src.daemon"],
+                    (
+                        [python_exe, "--daemon"]
+                        if getattr(sys, "frozen", False)
+                        else [python_exe, "-m", "src.daemon"]
+                    ),
                     cwd=str(PROJECT_ROOT),
                     stdout=logf,
                     stderr=subprocess.STDOUT,

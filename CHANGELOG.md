@@ -5,6 +5,13 @@ All notable changes to Ultimate Focus Timer will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-11-27
+
+- Play a signed-in YouTube Mix inside the timer, follow the live queue, and reconnect through the music popup.
+- Restore the selected song and window size on reopen, and resume a paused song after breaks.
+- Recover from unreadable browser sessions and protect settings and credentials when saving.
+- Build and check desktop downloads on Windows, macOS and Linux.
+
 ## [Unreleased]
 
 ### Added

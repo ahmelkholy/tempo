@@ -1,6 +1,6 @@
 # 🎯 Ultimate Focus Timer
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/ahmelkholy/ultimate-focus-timer)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -98,13 +98,13 @@ The timer opens in portrait on first use and remembers the window size and zoom 
 
 ### For Optional Daemon Mode (Ultradian Rhythm)
 
-- **Python 3.8+** (Python 3.10+ recommended)
+- **Python 3.11+** (Python 3.10+ recommended)
 - **PortAudio** (for 40Hz binaural beats)
 - **FastAPI & Uvicorn** (async web framework)
 
 ### For Traditional Mode (Pomodoro GUI)
 
-- **Python 3.8+** (Python 3.10+ recommended)
+- **Python 3.11+** (Python 3.10+ recommended)
 - **MPV Media Player** (auto-installed by setup script)
 - **Tkinter** (usually included with Python)
 - **Supported Platforms**: Windows 10/11, macOS 10.14+, Linux

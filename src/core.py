@@ -264,9 +264,16 @@ class ConfigManager:
             with self._lock, _config_write_lock(self.config_path):
                 merged = deepcopy(DEFAULT_CONFIG)
                 if self.config_path.exists():
-                    data = yaml.safe_load(self.config_path.read_text(encoding="utf-8"))
-                    if data is not None and not isinstance(data, dict):
-                        raise ValueError("Expected a mapping of settings")
+                    try:
+                        data = yaml.safe_load(
+                            self.config_path.read_text(encoding="utf-8")
+                        )
+                        if data is not None and not isinstance(data, dict):
+                            raise ValueError("Expected a mapping of settings")
+                    except (yaml.YAMLError, ValueError):
+                        if _quarantine_file(self.config_path, "corrupt") is None:
+                            return False
+                        data = self.config.copy()
                     merged.update(data or {})
                     # An older window saving its geometry must keep newer music choices.
                     merged.update(
@@ -487,12 +494,16 @@ SYNC_RETRY_MAX_SECONDS = 6 * 60 * 60
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
-    """Write text by replacing the target file after a complete temp write."""
+    _atomic_write_bytes(path, content.encode("utf-8"))
+
+
+def _atomic_write_bytes(path: Path, content: bytes) -> None:
+    """Publish a complete file after flushing the temporary copy."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = None
     try:
         with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", dir=path.parent, delete=False
+            mode="wb", dir=path.parent, delete=False
         ) as fh:
             temp_path = Path(fh.name)
             fh.write(content)
@@ -508,7 +519,7 @@ def _quarantine_file(path: Path, suffix: str) -> Optional[Path]:
     """Move a bad runtime file aside without deleting user data."""
     if not path.exists():
         return None
-    stamped = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stamped = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     target = path.with_name(f"{path.name}.{suffix}.{stamped}")
     try:
         os.replace(path, target)

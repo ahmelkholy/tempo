@@ -3,25 +3,8 @@ import subprocess
 import threading
 import time
 
+from src.core import ConfigManager
 from src.system import MusicController
-
-
-class DummyConfig:
-    def __init__(self):
-        self.values = {
-            "classical_music_local_mode": True,
-            "classical_music_volume": 30,
-            "mpv_extra_args": "",
-        }
-
-    def get(self, key, default=None):
-        return self.values.get(key, default)
-
-    def set(self, key, value):
-        self.values[key] = value
-
-    def get_music_playlists(self):
-        return [{"name": "Test", "path": "playlist.m3u", "type": "local"}]
 
 
 class FakeProcess:
@@ -57,15 +40,20 @@ class FakeProcess:
 
 def make_controller(monkeypatch, tmp_path):
     monkeypatch.setattr(MusicController, "_find_mpv_executable", lambda self: "mpv")
-    monkeypatch.setattr(MusicController, "_test_mpv_executable", lambda self, path: True)
+    monkeypatch.setattr(
+        MusicController, "_test_mpv_executable", lambda self, path: True
+    )
     monkeypatch.setattr(
         subprocess,
         "run",
         lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0),
     )
-    controller = MusicController(DummyConfig())
+    config = ConfigManager(tmp_path / "config.yml")
+    video = tmp_path / "song.wav"
+    video.touch()
+    config.set("classical_music_selected_playlist", str(video))
+    controller = MusicController(config)
     controller.pid_file = tmp_path / "mpv.pid"
-    controller._RESTART_DELAYS_SECONDS = (0,)
     return controller
 
 
@@ -94,6 +82,7 @@ def test_unexpected_mpv_exit_reports_error_without_restart(monkeypatch, tmp_path
     assert len(processes) == 1
     assert controller.is_playing is False
     assert controller.last_error
+
 
 def test_music_stop_does_not_restart_mpv(monkeypatch, tmp_path):
     controller = make_controller(monkeypatch, tmp_path)

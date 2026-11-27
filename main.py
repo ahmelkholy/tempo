@@ -27,7 +27,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 # Bypass proxy for local daemon
-os.environ["no_proxy"] = "localhost,127.0.0.1"
+os.environ.setdefault("no_proxy", "localhost,127.0.0.1")
 
 # ── Remaining src imports ─────────────────────────────────────────────────────
 from src.core import ConfigManager, SessionManager
@@ -91,7 +91,7 @@ class UltimateFocusLauncher:
 
     def check_dependencies(self) -> Dict[str, bool]:
         deps = {
-            "python": sys.version_info >= (3, 8),
+            "python": sys.version_info >= (3, 11),
             "tkinter": self._check_module("tkinter"),
             "yaml": self._check_module("yaml"),
             "plyer": self._check_module("plyer"),
@@ -417,6 +417,9 @@ def main():
         metavar="PATH",
         help="Path to a Google OAuth Desktop App JSON file for --connect-tasks",
     )
+    from src import __version__
+
+    parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("--check-deps", action="store_true")
     parser.add_argument("--sys-info", action="store_true")
     parser.add_argument(

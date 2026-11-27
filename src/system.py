@@ -13,7 +13,6 @@ import os
 import platform
 import shlex
 import shutil
-import signal
 import subprocess
 import sys
 import threading
@@ -133,6 +132,56 @@ logger = logging.getLogger(__name__)
 _SUBPROCESS_FLAGS: int = (
     subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
 )
+
+
+def bundled_media_tools() -> Path:
+    executable = Path(sys.executable).resolve()
+    if sys.platform == "darwin":
+        return executable.parents[1] / "Helpers"
+    return executable.parent / "player-tools"
+
+
+def media_environment():
+    env = os.environ.copy()
+    if getattr(sys, "frozen", False):
+        env["PATH"] = os.pathsep.join(
+            [str(APP_HOME / "tools"), str(bundled_media_tools()), env.get("PATH", "")]
+        )
+        if sys.platform.startswith("linux"):
+            original = env.pop("LD_LIBRARY_PATH_ORIG", None)
+            env.pop("LD_LIBRARY_PATH", None)
+            if original:
+                env["LD_LIBRARY_PATH"] = original
+    return env
+
+
+def update_bundled_extractor():
+    """Update a temporary copy so an interrupted repair keeps the working helper."""
+    import tempfile
+
+    name = "yt-dlp.exe" if os.name == "nt" else "yt-dlp"
+    tools = APP_HOME / "tools"
+    tools.mkdir(parents=True, exist_ok=True)
+    installed = tools / name
+    with tempfile.TemporaryDirectory(dir=tools) as temp:
+        candidate = Path(temp) / name
+        shutil.copy2(bundled_media_tools() / name, candidate)
+        env = media_environment()
+        subprocess.run(
+            [str(candidate), "-U"],
+            env=env,
+            check=True,
+            timeout=150,
+            creationflags=_SUBPROCESS_FLAGS,
+        )
+        subprocess.run(
+            [str(candidate), "--version"],
+            env=env,
+            check=True,
+            timeout=20,
+            creationflags=_SUBPROCESS_FLAGS,
+        )
+        os.replace(candidate, installed)
 
 
 def _mac_music_proxy() -> str:
@@ -288,12 +337,16 @@ def _music_failure_reason(line: str) -> Optional[str]:
             code[0] if code else "", _CHROME_CONNECTION_ERROR
         )
     if (
-        "cookie" in text
-        and any(
-            word in text
-            for word in ("decrypt", "could not", "failed", "permission denied")
+        (
+            "cookie" in text
+            and any(
+                word in text
+                for word in ("decrypt", "could not", "failed", "permission denied")
+            )
         )
-    ) or "keychain" in text or "dpapi" in text:
+        or "keychain" in text
+        or "dpapi" in text
+    ):
         return _CHROME_COOKIE_ERROR
     if "focus mix: youtube returned a signed-out queue" in text:
         return _CHROME_SIGNED_OUT
@@ -558,7 +611,7 @@ class MusicController:
 
         # Finder does not inherit the shell PATH. Include standard Homebrew bins
         # for yt-dlp and its JavaScript runtime without changing the parent env.
-        env = os.environ.copy()
+        env = media_environment()
         if platform.system() == "Darwin":
             env["PATH"] = os.pathsep.join(
                 [env.get("PATH", ""), "/opt/homebrew/bin", "/usr/local/bin"]
@@ -577,11 +630,14 @@ class MusicController:
             # GUI launchers often omit the app's Python scripts directory from PATH.
             import sysconfig
 
-            env["PATH"] = os.pathsep.join(
-                [sysconfig.get_path("scripts"), env.get("PATH", "")]
-            )
+            if not getattr(sys, "frozen", False):
+                env["PATH"] = os.pathsep.join(
+                    [sysconfig.get_path("scripts"), env.get("PATH", "")]
+                )
             mpv_args.append("--ytdl-raw-options-append=ignore-config=")
-        extractor = shutil.which("yt-dlp", path=env.get("PATH"))
+        extractor = (
+            shutil.which("yt-dlp", path=env.get("PATH")) if source_kind else None
+        )
         if extractor:
             mpv_args.append(f"--script-opts-append=ytdl_hook-ytdl_path={extractor}")
         env.pop("FOCUS_RESUME_TRACK", None)

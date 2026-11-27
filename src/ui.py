@@ -3665,6 +3665,7 @@ class SettingsDialog:
         """Cancel settings changes"""
         self.dialog.destroy()
 
+
 class WorkCompletionDialog:
     """Dialog for selecting which task a completed work session contributed to"""
 

@@ -437,21 +437,25 @@ class MusicPanel(tk.Frame):
             return
         try:
             self._updater = subprocess.Popen(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "--disable-pip-version-check",
-                    "--no-input",
-                    "install",
-                    "--upgrade",
-                    "--only-binary=:all:",
-                    "--retries",
-                    "1",
-                    "--timeout",
-                    "15",
-                    "yt-dlp[default]",
-                ],
+                (
+                    [sys.executable, "--update-youtube"]
+                    if getattr(sys, "frozen", False)
+                    else [
+                        sys.executable,
+                        "-m",
+                        "pip",
+                        "--disable-pip-version-check",
+                        "--no-input",
+                        "install",
+                        "--upgrade",
+                        "--only-binary=:all:",
+                        "--retries",
+                        "1",
+                        "--timeout",
+                        "15",
+                        "yt-dlp[default]",
+                    ]
+                ),
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -552,10 +556,8 @@ class MusicPanel(tk.Frame):
                 "Install mpv…", lambda: webbrowser.open("https://mpv.io/installation/")
             )
         elif youtube_source_kind(source) and not connection_failure:
-            if (
-                sys.prefix != sys.base_prefix
-                and sys.version_info >= (3, 11)
-                and not getattr(sys, "frozen", False)
+            if getattr(sys, "frozen", False) or (
+                sys.prefix != sys.base_prefix and sys.version_info >= (3, 11)
             ):
                 self._update_button = ttk.Button(
                     frame,
