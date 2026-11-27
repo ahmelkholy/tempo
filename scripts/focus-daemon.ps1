@@ -1,4 +1,4 @@
-# Focus Timer Daemon Launcher (PowerShell)
+# Tempo Daemon Launcher (PowerShell)
 # Usage: .\focus-daemon.ps1 -Action start|stop|status
 
 param(
@@ -28,7 +28,7 @@ function Test-DaemonRunning {
 }
 
 function Start-Daemon {
-    Write-Host "[+] Starting Focus Timer daemon..." -ForegroundColor Green
+    Write-Host "[+] Starting Tempo daemon..." -ForegroundColor Green
 
     if (Test-DaemonRunning) {
         $PID = Get-Content $DAEMON_PID_FILE
@@ -66,7 +66,7 @@ function Start-Daemon {
 }
 
 function Stop-Daemon {
-    Write-Host "[+] Stopping Focus Timer daemon..." -ForegroundColor Green
+    Write-Host "[+] Stopping Tempo daemon..." -ForegroundColor Green
 
     if (-not (Test-Path $DAEMON_PID_FILE)) {
         Write-Host "[!] Daemon not running" -ForegroundColor Yellow

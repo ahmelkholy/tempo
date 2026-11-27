@@ -29,6 +29,7 @@ jobs:
         run: |
           python -m pip install dist/*.whl
           cd "$RUNNER_TEMP"
+          tempo --version
           focus --version
           python -m pip check
           python -c "from pathlib import Path; import src; p=Path(src.__file__).parent; assert (p/'focus_track.lua').is_file() and (p/'chrome_mix_extension/manifest.json').is_file() and (p/'radio_plugins/focus/yt_dlp_plugins/extractor/focus_radio.py').is_file()"
@@ -106,12 +107,12 @@ jobs:
         run: |
           $player = Get-ChildItem "$env:ChocolateyInstall/lib/mpvio.install" -Filter mpv.exe -Recurse | Select-Object -First 1
           $env:Path = "$($player.DirectoryName);$env:Path"
-          & "dist/Ultimate Focus/player-tools/yt-dlp.exe" --version
+          & "dist/Tempo/player-tools/yt-dlp.exe" --version
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          & "dist/Ultimate Focus/player-tools/deno.exe" --version
+          & "dist/Tempo/player-tools/deno.exe" --version
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $env:FOCUS_TEST_REPORT = Join-Path $env:RUNNER_TEMP desktop-check.txt
-          $app = Start-Process "dist/Ultimate Focus/Ultimate Focus.exe" -ArgumentList "--self-test" -PassThru
+          $app = Start-Process "dist/Tempo/Tempo.exe" -ArgumentList "--self-test" -PassThru
           if (!$app.WaitForExit(90000)) { $app.Kill(); throw "Desktop check timed out" }
           if (Test-Path $env:FOCUS_TEST_REPORT) { Get-Content $env:FOCUS_TEST_REPORT }
           exit $app.ExitCode
@@ -120,11 +121,11 @@ jobs:
         shell: bash
         run: |
           if [[ "$RUNNER_OS" == macOS ]]; then
-            app="dist/Ultimate Focus.app/Contents/MacOS/Ultimate Focus"
-            tools="dist/Ultimate Focus.app/Contents/Helpers"
+            app="dist/Tempo.app/Contents/MacOS/Tempo"
+            tools="dist/Tempo.app/Contents/Helpers"
           else
-            app="dist/Ultimate Focus/Ultimate Focus"
-            tools="dist/Ultimate Focus/player-tools"
+            app="dist/Tempo/Tempo"
+            tools="dist/Tempo/player-tools"
           fi
           "$tools/yt-dlp" --version
           "$tools/deno" --version
@@ -132,7 +133,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: native-${{ matrix.os }}
-          path: dist/ultimate-focus-timer-*
+          path: dist/tempo-*
           if-no-files-found: error
           compression-level: 0
 
@@ -156,5 +157,5 @@ jobs:
           cd assets
           test "$(find . -maxdepth 1 -type f | wc -l)" -eq 6
           sha256sum * > SHA256SUMS
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --title "Ultimate Focus Timer $GITHUB_REF_NAME" --notes-file "$GITHUB_WORKSPACE/docs/RELEASE.md" *
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --draft --title "Tempo $GITHUB_REF_NAME" --notes-file "$GITHUB_WORKSPACE/docs/RELEASE.md" *
           gh release edit "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft=false --latest

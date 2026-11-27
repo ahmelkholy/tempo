@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-google_integration.py - Google Tasks integration for Ultimate Focus Timer.
+google_integration.py - Google Tasks integration for Tempo.
 
 Connects the local task list with Google Tasks.
 """

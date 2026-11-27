@@ -78,7 +78,7 @@ The Ultimate Focus Timer project has been successfully organized and prepared fo
 ## 📂 File Structure
 
 ```
-ultimate-focus-timer/
+tempo/
 ├── 📁 src/                     # Source code modules
 ├── 📁 tests/                   # Test suite
 ├── 📁 docs/                    # Documentation
@@ -99,7 +99,7 @@ ultimate-focus-timer/
 
 ```powershell
 git clone <repository-url>
-cd ultimate-focus-timer
+cd tempo
 .\dev.ps1 setup
 ```
 
@@ -107,7 +107,7 @@ cd ultimate-focus-timer
 
 ```bash
 git clone <repository-url>
-cd ultimate-focus-timer
+cd tempo
 make setup
 ```
 

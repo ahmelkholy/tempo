@@ -1,10 +1,10 @@
-# Using Ultimate Focus on macOS
+# Using Tempo on macOS
 
 Install the Finder/Dock launcher from the checkout:
 
 ```sh
 .venv/bin/python scripts/install_macos_app.py
-open "$HOME/Applications/Ultimate Focus.app"
+open "$HOME/Applications/Tempo.app"
 ```
 
 Keep this checkout and its virtual environment in place. Run the installer again
@@ -82,7 +82,7 @@ Mix…**. An existing connection works automatically. When the player is idle, t
 popup offers **Play my Mix**.
 
 For a first-time installation, the popup offers **Set up in Chrome**. On the
-Focus Timer Mix page in Chrome, click **Copy folder and open Extensions**. Turn on **Developer
+Tempo Mix page in Chrome, click **Copy folder and open Extensions**. Turn on **Developer
 mode**, click **Load unpacked**, press **⌘⇧G**, paste, press Return, and select the
 folder. The setup page stays open and checks the Mix automatically.
 
@@ -95,7 +95,7 @@ recommendations. Chrome sends the ordered song IDs, titles, and Mix links. The
 timer plays public audio streams with mpv and controls breaks and Next. Tracks that
 require account access for the audio itself may still be unavailable. Keep the
 extension enabled in the Chrome profile you use for YouTube. To disconnect, remove
-**Focus Timer Mix** in Chrome and select **Play without sign-in** in the timer.
+**Tempo Mix** in Chrome and select **Play without sign-in** in the timer.
 **Open Mix in Chrome** starts separate browser playback.
 
 With `radio_refresh: false`, repeat loops the loaded page. Ordinary playlist

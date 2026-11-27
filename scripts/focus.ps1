@@ -1,9 +1,9 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Focus Timer Launcher Script for PowerShell
+    Tempo Launcher Script for PowerShell
 .DESCRIPTION
-    This script activates the virtual environment and launches the Focus Timer
+    This script activates the virtual environment and launches Tempo
     from anywhere on your system.
 .PARAMETER Mode
     Launch mode: gui, console, dashboard, quick, break, stats, check, info, interactive
@@ -22,15 +22,15 @@ param(
     [int]$Duration = 0
 )
 
-# Focus Timer installation path
-$FOCUS_PATH = "c:\Users\ahm_e\AppData\Local\focus"
+# Tempo installation path
+$FOCUS_PATH = Split-Path -Parent $PSScriptRoot
 $VENV_ACTIVATE = "$FOCUS_PATH\.venv\Scripts\Activate.ps1"
 $MAIN_SCRIPT = "$FOCUS_PATH\main.py"
 
 # Check if installation exists
 if (-not (Test-Path $FOCUS_PATH)) {
-    Write-Host "❌ Focus Timer not found at: $FOCUS_PATH" -ForegroundColor Red
-    Write-Host "💡 Please ensure the Focus Timer is properly installed." -ForegroundColor Yellow
+    Write-Host "❌ Tempo not found at: $FOCUS_PATH" -ForegroundColor Red
+    Write-Host "💡 Please ensure Tempo is properly installed." -ForegroundColor Yellow
     exit 1
 }
 
@@ -43,7 +43,7 @@ if (-not (Test-Path $VENV_ACTIVATE)) {
 
 if (-not (Test-Path $MAIN_SCRIPT)) {
     Write-Host "❌ Main launcher not found at: $MAIN_SCRIPT" -ForegroundColor Red
-    Write-Host "💡 Please verify the Focus Timer installation." -ForegroundColor Yellow
+    Write-Host "💡 Please verify the Tempo installation." -ForegroundColor Yellow
     exit 1
 }
 
@@ -51,7 +51,7 @@ if (-not (Test-Path $MAIN_SCRIPT)) {
 $originalLocation = Get-Location
 
 try {
-    # Change to Focus Timer directory
+    # Change to Tempo directory
     Set-Location $FOCUS_PATH
 
     # Activate virtual environment
@@ -65,7 +65,7 @@ try {
     elseif ($Mode -eq "bg" -or $Mode -eq "background") {
         # Launch in background (detached) - use python.exe with window, not pythonw
         Start-Process -FilePath "python" -ArgumentList "`"$MAIN_SCRIPT`"","--gui" -WorkingDirectory $FOCUS_PATH
-        Write-Host "✅ Focus Timer started in background" -ForegroundColor Green
+        Write-Host "✅ Tempo started in background" -ForegroundColor Green
         return
     }
     elseif ($Mode -eq "gui") {
@@ -124,7 +124,7 @@ try {
     }
 }
 catch {
-    Write-Host "❌ Error launching Focus Timer: $_" -ForegroundColor Red
+    Write-Host "❌ Error launching Tempo: $_" -ForegroundColor Red
 }
 finally {
     # Restore original location

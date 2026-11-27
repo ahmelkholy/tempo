@@ -1,10 +1,10 @@
 #!/bin/bash
-# Global CLI alias installer for Ultimate Focus Timer - Portable Version
+# Global CLI alias installer for Tempo - Portable Version
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
-echo "🎯 Ultimate Focus Timer - Global CLI Installer"
+echo "🎯 Tempo - Global CLI Installer"
 echo "=============================================="
 
 # Find the best Python executable (local venv is priority)
@@ -55,7 +55,7 @@ if [ -f "$RC_FILE" ] && grep -q "alias focus=" "$RC_FILE"; then
     echo "✅ Updated existing 'focus' alias in $RC_FILE"
 else
     echo "" >> "$RC_FILE"
-    echo "# Ultimate Focus Timer" >> "$RC_FILE"
+    echo "# Tempo" >> "$RC_FILE"
     echo "$ALIAS_CMD" >> "$RC_FILE"
     echo "✅ Added 'focus' alias to $RC_FILE"
 fi

@@ -5,6 +5,10 @@ All notable changes to Ultimate Focus Timer will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-11-27
+
+- Renamed the app and desktop downloads to Tempo. The existing `focus` command and saved preferences continue to work.
+
 ## [2.1.0] - 2026-11-27
 
 - Play a signed-in YouTube Mix inside the timer, follow the live queue, and reconnect through the music popup.
@@ -210,6 +214,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to th
 
 ## Support
 
-- **Bug Reports**: [GitHub Issues](https://github.com/ahmelkholy/ultimate-focus-timer/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/ahmelkholy/ultimate-focus-timer/discussions)
-- **Documentation**: [Project Wiki](https://github.com/ahmelkholy/ultimate-focus-timer/wiki)
+- **Bug Reports**: [GitHub Issues](https://github.com/ahmelkholy/tempo/issues)
+- **Feature Requests**: [GitHub Discussions](https://github.com/ahmelkholy/tempo/discussions)
+- **Documentation**: [Project Wiki](https://github.com/ahmelkholy/tempo/wiki)

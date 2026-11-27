@@ -1,8 +1,8 @@
-# Ultimate Focus Timer - New Features Implementation
+# Tempo - New Features Implementation
 
 ## Summary of Implemented Features
 
-This implementation adds comprehensive enhancements to the Ultimate Focus Timer, including:
+This implementation adds comprehensive enhancements to Tempo, including:
 
 1. **Task Management Enhancements**
    - Drag-and-drop task reordering
@@ -323,11 +323,11 @@ Potential improvements for future versions:
 ## Credits
 
 Implementation by Claude Sonnet 4.5 (2026-04-08)
-Based on Ultimate Focus Timer by Ahmed Kholy
+Based on Tempo by Ahmed Kholy
 
 ## Support
 
 For issues or questions:
 
-- GitHub Issues: https://github.com/ahmelkholy/ultimate-focus-timer/issues
+- GitHub Issues: https://github.com/ahmelkholy/tempo/issues
 - Feature implemented in branch: `claude/add-drag-drop-reordering`

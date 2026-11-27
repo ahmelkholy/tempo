@@ -1,6 +1,6 @@
-# 🎯 Ultimate Focus Timer - Complete Documentation
+# 🎯 Tempo - Complete Documentation
 
-Welcome to the comprehensive documentation for Ultimate Focus Timer, a cross-platform productivity application built with Python.
+Welcome to the comprehensive documentation for Tempo, a cross-platform productivity application built with Python.
 
 ## 📚 Table of Contents
 
@@ -16,14 +16,14 @@ Welcome to the comprehensive documentation for Ultimate Focus Timer, a cross-pla
 
 ## 🚀 Quick Start
 
-Choose your desktop archive and extract the whole folder. Double-click **Ultimate Focus** to start. [Download the latest release](https://github.com/ahmelkholy/ultimate-focus-timer/releases/latest).
+Choose your desktop archive and extract the whole folder. Double-click **Tempo** to start. [Download the latest release](https://github.com/ahmelkholy/tempo/releases/latest).
 
 | Computer | Archive suffix | Application |
 | --- | --- | --- |
-| Windows x86-64 | `windows-x86_64.zip` | `Ultimate Focus.exe` |
-| Mac with Apple Silicon | `macos-arm64.zip` | `Ultimate Focus.app` |
-| Mac with Intel | `macos-x86_64.zip` | `Ultimate Focus.app` |
-| Linux x86-64 | `linux-x86_64.tar.gz` | `Ultimate Focus` |
+| Windows x86-64 | `windows-x86_64.zip` | `Tempo.exe` |
+| Mac with Apple Silicon | `macos-arm64.zip` | `Tempo.app` |
+| Mac with Intel | `macos-x86_64.zip` | `Tempo.app` |
+| Linux x86-64 | `linux-x86_64.tar.gz` | `Tempo` |
 
 The download includes the Python runtime and YouTube helpers. Press **Play** to use the music popup if mpv needs installing. Use **Music → Change…** to select a song, playlist, or Mix.
 
@@ -105,4 +105,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
 
 ---
 
-**Thank you for using Ultimate Focus Timer! 🎯**
+**Thank you for using Tempo! 🎯**

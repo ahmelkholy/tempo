@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-system.py - OS-level integrations for Ultimate Focus Timer.
+system.py - OS-level integrations for Tempo.
 
 Combines: app_paths, logger, music_controller, notification_manager,
           tray_manager, hotkey_manager
@@ -285,18 +285,18 @@ def normalise_music_link(link: str) -> str:
 
 
 _CHROME_COOKIE_ERROR = "The player couldn’t read your Chrome session. Connect Chrome to play your personal Mix in the timer."
-_CHROME_SIGNED_OUT = "Sign in to YouTube in the Chrome profile with Focus Timer Mix enabled, then choose Connect Chrome in the timer."
+_CHROME_SIGNED_OUT = "Sign in to YouTube in the Chrome profile with Tempo Mix enabled, then choose Connect Chrome in the timer."
 _CHROME_CONNECTION_ERROR = (
-    "Enable Focus Timer Mix in your Chrome profile, then return to the timer."
+    "Enable Tempo Mix in your Chrome profile, then return to the timer."
 )
 _CHROME_CONNECTION_ERRORS = {
     "extension": _CHROME_CONNECTION_ERROR,
     "pairing": "Chrome is paired with another timer folder. Load the folder shown in Connect Chrome.",
-    "timeout": "Chrome didn’t answer the timer. Check that Focus Timer Mix is enabled in the profile you’re using.",
+    "timeout": "Chrome didn’t answer the timer. Check that Tempo Mix is enabled in the profile you’re using.",
     "signin": _CHROME_SIGNED_OUT,
     "network": "Chrome could not load YouTube. Check that the Mix opens in your signed-in Chrome profile.",
     "mix": "YouTube didn’t return a queue for this Mix. Check the Mix link in Chrome.",
-    "format": "Focus Timer Mix couldn’t read YouTube’s song order. Check for a timer update.",
+    "format": "Tempo Mix couldn’t read YouTube’s song order. Check for a timer update.",
 }
 
 
@@ -1556,9 +1556,9 @@ class TrayManager:
             import threading
 
             self._icon = pystray.Icon(
-                "FocusTimer",
+                "Tempo",
                 _make_icon(self._COLORS["idle"]),
-                "Focus Timer — Idle",
+                "Tempo — Idle",
                 self._build_menu(),
             )
             if sys.platform == "darwin":
@@ -1588,7 +1588,7 @@ class TrayManager:
         if not self._icon:
             return
         color = self._COLORS.get(state, self._COLORS["idle"])
-        label = tooltip or f"Focus Timer — {state.title()}"
+        label = tooltip or f"Tempo — {state.title()}"
         try:
             self._icon.icon = _make_icon(color)
             self._icon.title = label

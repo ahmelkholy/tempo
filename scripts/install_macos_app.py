@@ -14,9 +14,26 @@ def main():
     python = root / ".venv" / "bin" / "python"
     if not python.exists():
         raise SystemExit("Create the project's .venv before installing the launcher.")
-    bundle = Path.home() / "Applications" / "Ultimate Focus.app"
+    bundle = Path.home() / "Applications" / "Tempo.app"
+    # Keep the existing launcher identity and directory inode for Dock bookmarks.
+    legacy = bundle.with_name("Ultimate Focus.app")
+    if (
+        not bundle.exists()
+        and not bundle.is_symlink()
+        and legacy.is_dir()
+        and not legacy.is_symlink()
+    ):
+        info = legacy / "Contents" / "Info.plist"
+        if (
+            info.is_file()
+            and plistlib.loads(info.read_bytes()).get("CFBundleIdentifier")
+            == "local.ultimate-focus.launcher"
+        ):
+            legacy.rename(bundle)
     contents = bundle / "Contents"
     executable = contents / "MacOS" / "ultimate-focus"
+    if bundle.is_symlink():
+        raise SystemExit(f"An application link already exists at {bundle}")
     if bundle.exists():
         info_path = contents / "Info.plist"
         if (
@@ -37,8 +54,8 @@ def main():
     (contents / "Info.plist").write_bytes(
         plistlib.dumps(
             {
-                "CFBundleName": "Ultimate Focus",
-                "CFBundleDisplayName": "Ultimate Focus",
+                "CFBundleName": "Tempo",
+                "CFBundleDisplayName": "Tempo",
                 "CFBundleIdentifier": "local.ultimate-focus.launcher",
                 "CFBundleExecutable": "ultimate-focus",
                 "CFBundlePackageType": "APPL",

@@ -1,6 +1,6 @@
 # 🎯 Virtual Environment Setup Guide
 
-This guide helps you set up a proper Python virtual environment for the Ultimate Focus Timer project.
+This guide helps you set up a proper Python virtual environment for the Tempo project.
 
 ## 🐍 Why Use Virtual Environments?
 

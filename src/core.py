@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-core.py - Pure Python backend for Ultimate Focus Timer.
+core.py - Pure Python backend for Tempo.
 
 Combines: config_manager, session_manager, task_manager
 """

@@ -109,7 +109,7 @@ class ConsoleInterface:
         if sys.stdout.isatty():
             print("\033[2J\033[H", end="")
         print("═" * 70)
-        print("                     🎯 FOCUS TIMER")
+        print("                     🎯 TEMPO")
         print("                   Console Manager")
         print("═" * 70)
         print()
@@ -226,7 +226,7 @@ class ConsoleInterface:
     def _print_help(self):
         """Print help information"""
         print("🆘 HELP")
-        print("├─ Focus Timer uses the Pomodoro Technique")
+        print("├─ Tempo uses the Pomodoro Technique")
         print("├─ Work sessions are followed by short breaks")
         print("├─ Every 4th session includes a long break")
         print("├─ Auto-start breaks: Enabled (configurable)")
@@ -337,7 +337,7 @@ class ConsoleInterface:
     def run_interactive(self):
         """Run the interactive console interface"""
         self._print_header()
-        print("🚀 Starting Focus Timer Console...")
+        print("🚀 Starting Tempo Console...")
         print("Type 'h' for help or 'q' to quit")
         print()
         time.sleep(2)
@@ -428,7 +428,7 @@ class ConsoleInterface:
 
 def main():
     """Main entry point"""
-    parser = argparse.ArgumentParser(description="Focus Timer Console Manager")
+    parser = argparse.ArgumentParser(description="Tempo Console Manager")
 
     # Mode selection
     parser.add_argument(

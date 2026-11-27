@@ -1,14 +1,14 @@
-# Ultimate Focus Timer - Quick Start Guide
+# Tempo - Quick Start Guide
 
-Download the desktop archive for your computer, extract it, and open **Ultimate Focus**. [Get the latest release](https://github.com/ahmelkholy/ultimate-focus-timer/releases/latest).
+Download the desktop archive for your computer, extract it, and open **Tempo**. [Get the latest release](https://github.com/ahmelkholy/tempo/releases/latest).
 
 ## Installation from source
 
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/ahmelkholy/ultimate-focus-timer.git
-   cd ultimate-focus-timer
+   git clone https://github.com/ahmelkholy/tempo.git
+   cd tempo
    ```
 
 2. **Install Python dependencies:**
@@ -210,7 +210,7 @@ sudo apt-get install python3-tk
 
 ## Support
 
-- GitHub Issues: https://github.com/ahmelkholy/ultimate-focus-timer/issues
+- GitHub Issues: https://github.com/ahmelkholy/tempo/issues
 - Documentation: See docs/ folder
 
 ## License

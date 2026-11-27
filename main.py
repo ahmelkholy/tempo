@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Ultimate Focus Timer - Main Entry Point
+Tempo - Main Entry Point
 """
 
 import argparse
@@ -276,7 +276,7 @@ class UltimateFocusLauncher:
 
     def interactive_launcher(self):
         while True:
-            print("\n--- Ultimate Focus Timer ---")
+            print("\n--- Tempo ---")
             print("1. GUI  2. Console  3. Dashboard  4. Quick Work (25m)")
             print("5. Quick Break (5m)  6. Stats  7. Deps  8. Sys Info  9. Exit")
             try:
@@ -354,7 +354,7 @@ def _create_desktop_shortcut() -> None:
         return
 
     desktop = Path.home() / "Desktop"
-    shortcut = desktop / "Focus Timer.lnk"
+    shortcut = desktop / "Tempo.lnk"
 
     # Use Windows Script Host via a temporary VBScript
     vbs_content = f"""\
@@ -362,7 +362,7 @@ Set WshShell = WScript.CreateObject("WScript.Shell")
 Set oLink = WshShell.CreateShortcut("{shortcut}")
 oLink.TargetPath = "{target}"
 oLink.WorkingDirectory = "{PROJECT_ROOT}"
-oLink.Description = "Ultimate Focus Timer"
+oLink.Description = "Tempo"
 oLink.Save
 """
     import tempfile
@@ -393,7 +393,7 @@ oLink.Save
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Ultimate Focus Timer")
+    parser = argparse.ArgumentParser(description="Tempo")
     parser.add_argument("--gui", action="store_true", help="Launch GUI mode")
     parser.add_argument("--console", action="store_true", help="Launch console mode")
     parser.add_argument(

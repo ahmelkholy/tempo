@@ -1,5 +1,5 @@
 """
-focus.pyw — Windowless double-click launcher for the Focus Timer.
+focus.pyw — Windowless double-click launcher for Tempo.
 
 Windows associates .pyw files with pythonw.exe, so double-clicking this file
 opens the GUI without any console window.  All logging still goes to log/app.log.

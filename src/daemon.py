@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Ultra-Lightweight FastAPI Daemon for Ultimate Focus Timer
+Ultra-Lightweight FastAPI Daemon for Tempo
 Implements 90/20 Ultradian rhythm without system monitoring
 """
 
@@ -302,8 +302,8 @@ class UltradianStateMachine:
                 logger.warning("Cannot access hosts file: %s", hosts_path)
                 return
 
-            marker_start = "# >>> FOCUS TIMER BLOCKING START >>>"
-            marker_end = "# <<< FOCUS TIMER BLOCKING END <<<"
+            marker_start = "# >>> TEMPO BLOCKING START >>>"
+            marker_end = "# <<< TEMPO BLOCKING END <<<"
 
             # For safety, we'll create a command that uses sudo/admin
             if block:
@@ -371,7 +371,7 @@ class UltradianStateMachine:
 # FastAPI Application
 # ============================================================================
 
-app = FastAPI(title="Ultimate Focus Timer Daemon", version=__version__)
+app = FastAPI(title="Tempo Daemon", version=__version__)
 
 # Global state machine instance
 state_machine = UltradianStateMachine()
@@ -439,7 +439,9 @@ async def root():
     """Health check endpoint"""
     return {
         "status": "online",
+        # Existing clients use this field to identify the service.
         "name": "Ultimate Focus Timer Daemon",
+        "display_name": app.title,
         "version": __version__,
     }
 
@@ -479,7 +481,7 @@ async def get_status():
 @app.on_event("startup")
 async def startup_event():
     """Initialize daemon on startup"""
-    logger.info("Focus Timer Daemon starting...")
+    logger.info("Tempo Daemon starting...")
     logger.info("Ultradian rhythm: 5m RAMP_UP -> 85m DEEP_WORK -> 20m NEURAL_REST")
     global _periodic_sync_handle
     if _periodic_sync_handle is None:
@@ -494,7 +496,7 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Clean up on shutdown"""
-    logger.info("Focus Timer Daemon shutting down...")
+    logger.info("Tempo Daemon shutting down...")
     global _periodic_sync_handle
     if _periodic_sync_handle:
         _periodic_sync_handle.cancel()
@@ -526,7 +528,7 @@ def run_daemon(host: str = "127.0.0.1", port: int = 8765):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Ultimate Focus Timer Daemon")
+    parser = argparse.ArgumentParser(description="Tempo Daemon")
     parser.add_argument("--host", default="127.0.0.1", help="Host to bind to")
     parser.add_argument("--port", type=int, default=8765, help="Port to bind to")
     args = parser.parse_args()

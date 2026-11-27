@@ -125,13 +125,13 @@ def read_chrome_queue(url, folder, *, launch=None, timeout=28, interactive=False
 <ol><li>On the Extensions page, turn on <b>Developer mode</b> and click <b>Load unpacked</b>.
 <li>{"Press <b>⌘⇧G</b>, paste the path, then press Return and click <b>Select</b>." if sys.platform == "darwin" else "Paste the folder path into the folder chooser and select it."}
 <br><code id="folder">{escape(str(folder))}</code></ol>
-<p>Focus Timer checks your Mix automatically when you select the folder.</p></section>"""
+<p>Tempo checks your Mix automatically when you select the folder.</p></section>"""
     close_tab = "" if interactive else "window.close();"
     # A single timeout lets an uninstalled/disabled extension report back promptly.
-    page = f"""<!doctype html><html lang="en" data-manual="{int(interactive)}"><meta charset="utf-8"><title>Focus Timer Mix</title>
+    page = f"""<!doctype html><html lang="en" data-manual="{int(interactive)}"><meta charset="utf-8"><title>Tempo Mix</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style nonce="{nonce}">:root{{color-scheme:light dark;font:17px/1.5 system-ui}}body{{max-width:38rem;margin:10vh auto;padding:1rem}}li{{margin:.8rem 0}}code{{overflow-wrap:anywhere}}button{{font:inherit}}</style>
-<meta name="focus-mix" content="{request}"><h1>Focus Timer Mix</h1><p>Checking your connection to YouTube…</p>{instructions}
+<meta name="focus-mix" content="{request}"><h1>Tempo Mix</h1><p>Checking your connection to YouTube…</p>{instructions}
 <script nonce="{nonce}">document.querySelector("#copy")?.addEventListener("click", async e => {{
   try {{await navigator.clipboard.writeText(document.querySelector("#folder").textContent);}} catch {{}}
   try {{
@@ -147,7 +147,7 @@ if (document.documentElement.dataset.manual === "1") {{
 }}</script>
 <script nonce="{nonce}">window.addEventListener("load", () => setTimeout(async () => {{
   if (document.documentElement.dataset.focusConnected) return;
-  document.querySelector("p").textContent = "Focus Timer Mix hasn’t connected in this Chrome profile.";
+  document.querySelector("p").textContent = "Tempo Mix hasn’t connected in this Chrome profile.";
   const steps = document.querySelector("section"); if (steps) {{steps.hidden=false;return;}}
   await fetch(location.pathname, {{method:"POST",headers:{{"Content-Type":"application/json"}},body:'{{"error":"extension"}}'}}).catch(() => {{}});
   {close_tab}

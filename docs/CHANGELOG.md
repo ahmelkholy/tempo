@@ -209,6 +209,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to th
 
 ## Support
 
-- **Bug Reports**: [GitHub Issues](https://github.com/ahmelkholy/ultimate-focus-timer/issues)
-- **Feature Requests**: [GitHub Discussions](https://github.com/ahmelkholy/ultimate-focus-timer/discussions)
-- **Documentation**: [Project Wiki](https://github.com/ahmelkholy/ultimate-focus-timer/wiki)
+- **Bug Reports**: [GitHub Issues](https://github.com/ahmelkholy/tempo/issues)
+- **Feature Requests**: [GitHub Discussions](https://github.com/ahmelkholy/tempo/discussions)
+- **Documentation**: [Project Wiki](https://github.com/ahmelkholy/tempo/wiki)

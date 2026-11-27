@@ -1,16 +1,16 @@
 #!/bin/bash
-# Focus Timer Launcher Script for Git Bash / WSL
-# This script activates the virtual environment and launches Focus Timer
+# Tempo Launcher Script for Git Bash / WSL
+# This script activates the virtual environment and launches Tempo
 
-# Focus Timer installation path
-FOCUS_PATH="/c/Users/ahm_e/AppData/Local/focus"
+# Tempo installation path
+FOCUS_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 VENV_ACTIVATE="$FOCUS_PATH/.venv/Scripts/activate"
 MAIN_SCRIPT="$FOCUS_PATH/main.py"
 
 # Check if installation exists
 if [ ! -d "$FOCUS_PATH" ]; then
-    echo "❌ Focus Timer not found at: $FOCUS_PATH"
-    echo "💡 Please ensure the Focus Timer is properly installed."
+    echo "❌ Tempo not found at: $FOCUS_PATH"
+    echo "💡 Please ensure Tempo is properly installed."
     exit 1
 fi
 
@@ -23,14 +23,14 @@ fi
 
 if [ ! -f "$MAIN_SCRIPT" ]; then
     echo "❌ Main launcher not found at: $MAIN_SCRIPT"
-    echo "💡 Please verify the Focus Timer installation."
+    echo "💡 Please verify the Tempo installation."
     exit 1
 fi
 
 # Save current directory
 ORIGINAL_DIR=$(pwd)
 
-# Change to Focus Timer directory
+# Change to Tempo directory
 cd "$FOCUS_PATH" || exit 1
 
 # Activate virtual environment

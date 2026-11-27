@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Ultimate Focus Timer has been upgraded with a **daemon-based architecture** that implements the **90/20 Ultradian rhythm** for peak cognitive performance. This architecture abandons background tracking in favor of a lightweight state machine that executes scientific protocols deterministically.
+Tempo has been upgraded with a **daemon-based architecture** that implements the **90/20 Ultradian rhythm** for peak cognitive performance. This architecture abandons background tracking in favor of a lightweight state machine that executes scientific protocols deterministically.
 
 ## Architecture Changes
 
@@ -272,7 +272,7 @@ Pillow>=10.0.0          # Image generation
 ## File Structure
 
 ```
-ultimate-focus-timer/
+tempo/
 ├── src/
 │   ├── core.py              # 992 lines - Business logic
 │   ├── system.py            # 736 lines - OS integrations

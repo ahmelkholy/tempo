@@ -1,4 +1,4 @@
-# Pre-commit hooks for Ultimate Focus Timer
+# Pre-commit hooks for Tempo
 # Run `pre-commit install` to set up the git hook scripts
 
 default_stages: [commit]

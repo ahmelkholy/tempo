@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Ultimate Focus Timer CLI Module
+Tempo CLI Module
 Advanced command-line interface with rich terminal output
 """
 
@@ -88,13 +88,13 @@ class UltimateCLI:
         """Display application banner"""
         if self.use_rich:
             banner = """
-🎯 Ultimate Focus Timer CLI
+🎯 Tempo CLI
 Cross-Platform Productivity Suite
 """
             panel = Panel(banner.strip(), expand=False, border_style="bright_blue")
             self.console.print(panel)
         else:
-            print("🎯 Ultimate Focus Timer CLI")
+            print("🎯 Tempo CLI")
             print("Cross-Platform Productivity Suite")
             print("=" * 40)
 
@@ -364,10 +364,10 @@ Cross-Platform Productivity Suite
                 elif choice == "9":
                     if self.use_rich:
                         self.console.print(
-                            "👋 Thanks for using Focus Timer!", style="bright_green"
+                            "👋 Thanks for using Tempo!", style="bright_green"
                         )
                     else:
-                        print("👋 Thanks for using Focus Timer!")
+                        print("👋 Thanks for using Tempo!")
                     break
                 else:
                     if self.use_rich:
@@ -392,7 +392,7 @@ Cross-Platform Productivity Suite
     def _show_rich_menu(self):
         """Show interactive menu with rich formatting"""
         menu_text = """
-[bold cyan]🎯 Ultimate Focus Timer CLI[/bold cyan]
+[bold cyan]🎯 Tempo CLI[/bold cyan]
 
 [bold]Session Options:[/bold]
 1. 🎯 Work Session (25 min default)
@@ -414,7 +414,7 @@ Cross-Platform Productivity Suite
 
     def _show_basic_menu(self):
         """Show basic text menu"""
-        print("\n🎯 Ultimate Focus Timer CLI")
+        print("\n🎯 Tempo CLI")
         print("=" * 30)
         print("1. 🎯 Work Session (25 min)")
         print("2. ☕ Break Session (5 min)")
@@ -559,7 +559,7 @@ Cross-Platform Productivity Suite
     def _show_help(self):
         """Show help information"""
         help_text = """
-🎯 Ultimate Focus Timer CLI - Help
+🎯 Tempo CLI - Help
 
 QUICK COMMANDS:
   python main.py --quick 25        # 25-minute focus session
@@ -630,7 +630,7 @@ For more information, visit the project documentation.
 def main():
     """CLI entry point"""
     parser = argparse.ArgumentParser(
-        description="Ultimate Focus Timer CLI",
+        description="Tempo CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 

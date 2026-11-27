@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-mpv_installer.py - Cross-platform MPV auto-installer for Ultimate Focus Timer.
+mpv_installer.py - Cross-platform MPV auto-installer for Tempo.
 
 Automatically detects and installs MPV if not present.
 """

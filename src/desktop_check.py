@@ -13,6 +13,8 @@ def run():
 
     gui = FocusGUI()
     try:
+        if gui.root.title() != "Tempo":
+            raise RuntimeError("The installed window has the wrong app name")
         gui.root.withdraw()
         gui.root.update_idletasks()
         player = gui.music

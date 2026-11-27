@@ -1,5 +1,5 @@
 #!/bin/bash
-# Focus Timer Daemon Launcher (bash/sh/linux/mac)
+# Tempo Daemon Launcher (bash/sh/linux/mac)
 # Usage: bash focus-daemon.sh [start|stop|status]
 
 DAEMON_URL="http://127.0.0.1:8765"
@@ -8,7 +8,7 @@ DAEMON_PID_FILE="$PROJECT_DIR/daemon.pid"
 
 case "${1:-start}" in
     start)
-        echo "[+] Starting Focus Timer daemon..."
+        echo "[+] Starting Tempo daemon..."
         if [ -f "$DAEMON_PID_FILE" ]; then
             OLD_PID=$(cat "$DAEMON_PID_FILE")
             if kill -0 "$OLD_PID" 2>/dev/null; then
@@ -33,7 +33,7 @@ case "${1:-start}" in
         ;;
 
     stop)
-        echo "[+] Stopping Focus Timer daemon..."
+        echo "[+] Stopping Tempo daemon..."
         if [ ! -f "$DAEMON_PID_FILE" ]; then
             echo "[!] Daemon not running"
             exit 1

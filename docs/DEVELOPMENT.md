@@ -1,6 +1,6 @@
-# Ultimate Focus Timer - Development Guide
+# Tempo - Development Guide
 
-This guide covers the development setup, workflow, and best practices for contributing to the Ultimate Focus Timer project.
+This guide covers the development setup, workflow, and best practices for contributing to the Tempo project.
 
 ## Quick Start
 
@@ -9,7 +9,7 @@ This guide covers the development setup, workflow, and best practices for contri
 ```powershell
 # Clone and setup
 git clone <repository-url>
-cd ultimate-focus-timer
+cd tempo
 .\dev.ps1 setup
 ```
 
@@ -18,7 +18,7 @@ cd ultimate-focus-timer
 ```bash
 # Clone and setup
 git clone <repository-url>
-cd ultimate-focus-timer
+cd tempo
 make setup
 ```
 
@@ -47,7 +47,7 @@ This will:
 ## Project Structure
 
 ```
-ultimate-focus-timer/
+tempo/
 ├── src/                    # Source code modules
 │   ├── __init__.py        # Package initialization
 │   ├── __version__.py     # Version information

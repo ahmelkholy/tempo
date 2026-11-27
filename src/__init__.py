@@ -1,5 +1,5 @@
 """
-Ultimate Focus Timer Package
+Tempo Package
 A comprehensive cross-platform productivity timer application.
 """
 

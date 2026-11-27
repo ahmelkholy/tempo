@@ -386,7 +386,7 @@ class MusicPanel(tk.Frame):
                 _CHROME_CONNECTION_ERRORS["extension"],
                 _CHROME_CONNECTION_ERRORS["pairing"],
             ):
-                notice.set("Chrome needs Focus Timer Mix to share your song order.")
+                notice.set("Chrome needs Tempo Mix to share your song order.")
                 label, action = "Set up in Chrome", lambda: check(install=True)
             elif error == _CHROME_SIGNED_OUT:
                 notice.set("Sign in to YouTube to use your personal Mix.")

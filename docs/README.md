@@ -1,7 +1,7 @@
-# 🎯 Ultimate Focus Timer
+# 🎯 Tempo
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/ahmelkholy/ultimate-focus-timer)
+[![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/ahmelkholy/tempo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A comprehensive, cross-platform productivity timer application implementing the Pomodoro Technique with classical music integration, multiple interfaces, and detailed analytics. Built with pure Python for maximum compatibility and ease of use.
@@ -48,8 +48,8 @@ A comprehensive, cross-platform productivity timer application implementing the 
 1. **Clone or download the project**:
 
    ```bash
-   git clone https://github.com/ahmelkholy/ultimate-focus-timer.git
-   cd ultimate-focus-timer
+   git clone https://github.com/ahmelkholy/tempo.git
+   cd tempo
    ```
 
 2. **Set up virtual environment** (recommended):
@@ -127,7 +127,7 @@ python main.py --info
 ## 📁 Project Structure
 
 ```text
-ultimate-focus-timer/
+tempo/
 ├── main.py                 # Ultimate launcher with all functionality
 ├── setup.py               # Cross-platform setup and configuration
 ├── requirements.txt       # Python dependencies
@@ -413,9 +413,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/ahmelkholy/ultimate-focus-timer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/ahmelkholy/ultimate-focus-timer/discussions)
-- **Documentation**: [Wiki](https://github.com/ahmelkholy/ultimate-focus-timer/wiki)
+- **Issues**: [GitHub Issues](https://github.com/ahmelkholy/tempo/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/ahmelkholy/tempo/discussions)
+- **Documentation**: [Wiki](https://github.com/ahmelkholy/tempo/wiki)
 
 ---
 

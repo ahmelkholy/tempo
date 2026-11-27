@@ -2,6 +2,7 @@
 
 import hashlib
 import platform
+import plistlib
 import shutil
 import subprocess
 import sys
@@ -14,7 +15,7 @@ from pathlib import Path
 from src.__version__ import __version__
 
 ROOT = Path(__file__).resolve().parent
-NAME = "Ultimate Focus"
+NAME = "Tempo"
 YTDLP = {
     "Darwin": (
         "yt-dlp_macos",
@@ -138,7 +139,7 @@ def build():
         shutil.copy2(ROOT / file, notices / file)
     shutil.copytree(ROOT / "licenses", notices / "licenses", dirs_exist_ok=True)
     stem = (
-        "ultimate-focus-timer-"
+        "tempo-"
         + __version__
         + "-"
         + {"Darwin": "macos", "Windows": "windows", "Linux": "linux"}[system]
@@ -146,6 +147,14 @@ def build():
         + arch
     )
     if system == "Darwin":
+        info = bundle / "Contents/Info.plist"
+        metadata = plistlib.loads(info.read_bytes())
+        metadata.update(
+            CFBundleIdentifier="io.github.ahmelkholy.tempo",
+            CFBundleShortVersionString=__version__,
+            CFBundleVersion=__version__,
+        )
+        info.write_bytes(plistlib.dumps(metadata))
         subprocess.run(["codesign", "--force", "--sign", "-", str(bundle)], check=True)
         subprocess.run(["codesign", "--verify", "--deep", str(bundle)], check=True)
         subprocess.run(

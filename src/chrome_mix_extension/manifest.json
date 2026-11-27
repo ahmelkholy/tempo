@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Focus Timer Mix",
-  "version": "1.1",
-  "description": "Send the current YouTube Mix song order to your paired Focus Timer.",
+  "name": "Tempo Mix",
+  "version": "1.2",
+  "description": "Send the current YouTube Mix song order to your paired Tempo.",
   "host_permissions": ["https://www.youtube.com/*"],
   "background": {"service_worker": "mix.js"},
   "content_scripts": [{

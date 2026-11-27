@@ -1,18 +1,18 @@
 @echo off
-REM Focus Timer Launcher Script for Windows Command Prompt
-REM This batch file activates the virtual environment and launches Focus Timer
+REM Tempo Launcher Script for Windows Command Prompt
+REM This batch file activates the virtual environment and launches Tempo
 
 setlocal EnableDelayedExpansion
 
-REM Focus Timer installation path
-set FOCUS_PATH=c:\Users\ahm_e\AppData\Local\focus
+REM Tempo installation path
+for %%I in ("%~dp0..") do set "FOCUS_PATH=%%~fI"
 set VENV_ACTIVATE=%FOCUS_PATH%\.venv\Scripts\activate.bat
 set MAIN_SCRIPT=%FOCUS_PATH%\main.py
 
 REM Check if installation exists
 if not exist "%FOCUS_PATH%" (
-    echo ❌ Focus Timer not found at: %FOCUS_PATH%
-    echo 💡 Please ensure the Focus Timer is properly installed.
+    echo ❌ Tempo not found at: %FOCUS_PATH%
+    echo 💡 Please ensure Tempo is properly installed.
     exit /b 1
 )
 
@@ -32,7 +32,7 @@ if not exist "%MAIN_SCRIPT%" (
 REM Save current directory
 set ORIGINAL_DIR=%CD%
 
-REM Change to Focus Timer directory
+REM Change to Tempo directory
 cd /d "%FOCUS_PATH%"
 
 REM Activate virtual environment

@@ -86,7 +86,7 @@ def test_failed_check_keeps_song_and_disconnected_setting(monkeypatch, tmp_path)
         raise ChromeMixError("extension")
 
     monkeypatch.setattr(chrome_connection, "read_chrome_queue", unavailable)
-    with pytest.raises(ValueError, match="Enable Focus Timer Mix"):
+    with pytest.raises(ValueError, match="Enable Tempo Mix"):
         player.connect_chrome_mix(URL, tmp_path)
     assert config.get("chrome_mix_connection") is False
     assert player.playback_state == "playing" and player.current_playlist == URL

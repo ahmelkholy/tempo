@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ui.py - Presentation layer for Ultimate Focus Timer.
+ui.py - Presentation layer for Tempo.
 Combines: focus_app, focus_gui, dashboard, inline_task_widget, task_dialog
 """
 
@@ -2474,7 +2474,7 @@ class LauncherGUI:
 
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("🎯 Focus Timer Launcher")
+        self.root.title("🎯 Tempo Launcher")
         self.root.geometry("600x500")
         self.root.resizable(False, False)
         self.root.configure(bg="#2c3e50")
@@ -2532,9 +2532,7 @@ class LauncherGUI:
         header_frame.pack(fill="x", padx=20, pady=(20, 0))
         header_frame.pack_propagate(False)
 
-        title_label = ttk.Label(
-            header_frame, text="🎯 FOCUS TIMER", style="Title.TLabel"
-        )
+        title_label = ttk.Label(header_frame, text="🎯 TEMPO", style="Title.TLabel")
         title_label.pack(pady=(20, 5))
 
         subtitle_label = ttk.Label(
@@ -2873,10 +2871,10 @@ class LauncherGUI:
 
     def show_help(self):
         """Show help information"""
-        help_text = """🎯 FOCUS TIMER HELP
+        help_text = """🎯 TEMPO HELP
 
-WHAT IS FOCUS TIMER?
-Focus Timer is a productivity application based on the Pomodoro Technique:
+WHAT IS TEMPO?
+Tempo is a productivity application based on the Pomodoro Technique:
 • Work in focused 25-minute sessions
 • Take short 5-minute breaks between sessions
 • Take longer 15-30 minute breaks every 4 sessions
@@ -2922,7 +2920,7 @@ For more help, visit the configuration file or check the documentation.
 
         # Create help window
         help_window = tk.Toplevel(self.root)
-        help_window.title("🆘 Focus Timer Help")
+        help_window.title("🆘 Tempo Help")
         help_window.geometry("600x700")
         help_window.resizable(True, True)
         help_window.configure(bg="#2c3e50")
@@ -3802,7 +3800,7 @@ class WorkCompletionDialog:
 
 
 class FocusGUI:
-    """Modern GUI for the Focus Timer application"""
+    """Modern GUI for the Tempo application"""
 
     def __init__(self):
         """Initialize the GUI application"""
@@ -3927,7 +3925,8 @@ class FocusGUI:
 
     def setup_window(self):
         """Configure the main window"""
-        self.root.title("Ultimate Focus")
+        self.root.tk.call("tk", "appname", "Tempo")
+        self.root.title("Tempo")
         self.root.resizable(True, True)  # Enable resizing
 
         # Configure grid weights for proper expansion
@@ -4158,9 +4157,7 @@ class FocusGUI:
         header = ttk.Frame(self.main_frame)
         header.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 12))
         header.columnconfigure(0, weight=1)
-        self.title_label = ttk.Label(
-            header, text="Focus timer", font=("Arial", 16, "bold")
-        )
+        self.title_label = ttk.Label(header, text="Tempo", font=("Arial", 16, "bold"))
         self.title_label.grid(row=0, column=0, sticky="w")
         more = ttk.Menubutton(header, text="More", width=5)
         menu = tk.Menu(more, tearoff=False)
@@ -5960,7 +5957,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
             elif session_type in (SessionType.SHORT_BREAK, SessionType.LONG_BREAK):
                 self.music_panel.run(self.music.finish_break)
             self.notifications.show_session_complete(session_type.value, duration)
-            self.tray.set_state("idle", "Focus Timer — Session complete")
+            self.tray.set_state("idle", "Tempo — Session complete")
             self.update_display()
             self.update_button_states()
             self.show_completion_dialog(session_type, duration)
@@ -5996,7 +5993,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
             tray_state = "work" if session_type == SessionType.WORK else "break"
             self.tray.set_state(
                 tray_state,
-                f"Focus Timer — {session_type.value.replace('_', ' ').title()} ({duration_minutes}m)",
+                f"Tempo — {session_type.value.replace('_', ' ').title()} ({duration_minutes}m)",
             )
 
         self._marshal(_do)
@@ -6015,7 +6012,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
         def _do():
             if session_type == SessionType.WORK:
                 self.music_panel.run(self.music.pause_music)
-            self.tray.set_state("paused", "Focus Timer — Paused")
+            self.tray.set_state("paused", "Tempo — Paused")
 
         self._marshal(_do)
 
@@ -6028,7 +6025,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
             tray_state = "work" if session_type == SessionType.WORK else "break"
             self.tray.set_state(
                 tray_state,
-                f"Focus Timer — {session_type.value.replace('_', ' ').title()}",
+                f"Tempo — {session_type.value.replace('_', ' ').title()}",
             )
 
         self._marshal(_do)
@@ -6038,7 +6035,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
 
         def _do():
             self.music_panel.run(self.music.stop_music)
-            self.tray.set_state("idle", "Focus Timer — Idle")
+            self.tray.set_state("idle", "Tempo — Idle")
 
         self._marshal(_do)
 
@@ -6430,7 +6427,7 @@ def check_dependencies():
 
 def main():
     """Main entry point"""
-    parser = argparse.ArgumentParser(description="Focus Timer Application Launcher")
+    parser = argparse.ArgumentParser(description="Tempo Application Launcher")
 
     # Mode selection
     parser.add_argument("--gui", action="store_true", help="Launch GUI timer directly")

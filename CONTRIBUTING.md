@@ -1,6 +1,6 @@
-# Contributing to Ultimate Focus Timer
+# Contributing to Tempo
 
-We welcome contributions to make Ultimate Focus Timer even better! This document provides guidelines for contributing to the project.
+We welcome contributions to make Tempo even better! This document provides guidelines for contributing to the project.
 
 ## 🚀 Getting Started
 
@@ -18,8 +18,8 @@ We welcome contributions to make Ultimate Focus Timer even better! This document
 2. **Clone your fork** locally:
 
    ```bash
-   git clone https://github.com/your-username/ultimate-focus-timer.git
-   cd ultimate-focus-timer
+   git clone https://github.com/your-username/tempo.git
+   cd tempo
    ```
 
 3. **Set up virtual environment**:
@@ -297,10 +297,10 @@ Contributors will be recognized in:
 
 If you have questions about contributing:
 
-1. Check the [GitHub Discussions](https://github.com/ahmelkholy/ultimate-focus-timer/discussions)
+1. Check the [GitHub Discussions](https://github.com/ahmelkholy/tempo/discussions)
 2. Open a new discussion with the "Q&A" category
 3. Tag your question appropriately
 
 ---
 
-Thank you for contributing to Ultimate Focus Timer! Together, we can build an amazing productivity tool for everyone. 🎯
+Thank you for contributing to Tempo! Together, we can build an amazing productivity tool for everyone. 🎯

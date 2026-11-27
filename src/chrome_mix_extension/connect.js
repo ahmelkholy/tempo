@@ -13,7 +13,7 @@
       method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(reply)
     });
     if (result.ok && document.documentElement.dataset.manual === "1") {
-      let message = "Your Mix reached Focus Timer. Return to the timer to play it.";
+      let message = "Your Mix reached Tempo. Return to the timer to play it.";
       if (reply?.error === "signin") {
         message = "Sign in to YouTube in this Chrome profile, then choose Connect Chrome in the timer.";
       } else if (reply?.error || !Array.isArray(reply?.tracks) || reply.tracks.length < 2) {

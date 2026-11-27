@@ -1,17 +1,17 @@
 """
-Ultimate Focus Timer Version Information
+Tempo Version Information
 """
 
-__version__ = "2.1.0"
+__version__ = "2.1.1"
 __author__ = "Ahmed Elkholy"
 __email__ = "ahm_elkholy@outlook.com"
 __description__ = "A comprehensive cross-platform productivity timer application"
-__url__ = "https://github.com/ahmelkholy/ultimate-focus-timer"
+__url__ = "https://github.com/ahmelkholy/tempo"
 
 # Version components
 VERSION_MAJOR = 2
 VERSION_MINOR = 1
-VERSION_PATCH = 0
+VERSION_PATCH = 1
 VERSION_INFO = (VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
 
 # Build and release information

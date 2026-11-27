@@ -1,15 +1,15 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Focus Timer Alias Installation Script
+    Tempo Alias Installation Script
 .DESCRIPTION
-    This script sets up global aliases for the Focus Timer application
+    This script sets up global aliases for the Tempo application
     so you can run it from anywhere on your system.
 .EXAMPLE
     .\install-alias.ps1
 #>
 
-Write-Host "🎯 Focus Timer - Global Alias Installation" -ForegroundColor Cyan
+Write-Host "🎯 Tempo - Global Alias Installation" -ForegroundColor Cyan
 Write-Host "=" * 50 -ForegroundColor Gray
 
 $FOCUS_PATH = Split-Path -Parent $PSScriptRoot
@@ -54,7 +54,7 @@ function Show-ProfileInfo {
 function Add-FocusAlias {
     $aliasContent = @"
 
-# Focus Timer Alias - Added by Focus Timer Installation Script
+# Tempo Alias - Added by Tempo Installation Script
 function focus {
     param(
         [string]`$Mode = "",
@@ -78,14 +78,14 @@ function focus-stats { focus stats }
     }
 
     # Check if alias already exists
-    if ($currentContent -like "*Focus Timer Alias*") {
-        Write-Host "✅ Focus Timer alias already exists in Microsoft.PowerShell_profile.ps1" -ForegroundColor Green
+    if ($currentContent -like "*Tempo Alias*") {
+        Write-Host "✅ Tempo alias already exists in Microsoft.PowerShell_profile.ps1" -ForegroundColor Green
         return
     }
 
     # Add alias to profile
     Add-Content -Path $profilePath -Value $aliasContent
-    Write-Host "✅ Added Focus Timer alias to Microsoft.PowerShell_profile.ps1" -ForegroundColor Green
+    Write-Host "✅ Added Tempo alias to Microsoft.PowerShell_profile.ps1" -ForegroundColor Green
 }
 
 # Function to add to System PATH (for batch file)
@@ -124,7 +124,7 @@ function Set-ScriptPermissions {
 
 # Main installation
 try {
-    Write-Host "🔧 Installing Focus Timer aliases..." -ForegroundColor Cyan
+    Write-Host "🔧 Installing Tempo aliases..." -ForegroundColor Cyan
 
     # Show profile information
     Show-ProfileInfo
@@ -163,4 +163,4 @@ catch {
     exit 1
 }
 
-Write-Host "`n✨ Focus Timer is now globally accessible!" -ForegroundColor Green
+Write-Host "`n✨ Tempo is now globally accessible!" -ForegroundColor Green

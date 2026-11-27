@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ultimate-focus-timer"
 dynamic = ["version"]
-description = "A comprehensive cross-platform productivity timer application"
+description = "Tempo is a lightweight focus timer with music and task tracking."
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
@@ -75,13 +75,14 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ahmelkholy/ultimate-focus-timer"
-Documentation = "https://github.com/ahmelkholy/ultimate-focus-timer/blob/master/docs/USER_GUIDE.md"
-Repository = "https://github.com/ahmelkholy/ultimate-focus-timer"
-Issues = "https://github.com/ahmelkholy/ultimate-focus-timer/issues"
-Changelog = "https://github.com/ahmelkholy/ultimate-focus-timer/blob/master/CHANGELOG.md"
+Homepage = "https://github.com/ahmelkholy/tempo"
+Documentation = "https://github.com/ahmelkholy/tempo/blob/master/docs/USER_GUIDE.md"
+Repository = "https://github.com/ahmelkholy/tempo"
+Issues = "https://github.com/ahmelkholy/tempo/issues"
+Changelog = "https://github.com/ahmelkholy/tempo/blob/master/CHANGELOG.md"
 
 [project.scripts]
+tempo = "main:main"
 focus = "main:main"
 focus-timer = "main:main"
 

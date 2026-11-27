@@ -1,7 +1,7 @@
-# 🎯 Ultimate Focus Timer
+# 🎯 Tempo
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/ahmelkholy/ultimate-focus-timer)
+[![Cross Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/ahmelkholy/tempo)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A lightweight personal productivity timer for traditional Pomodoro sessions, optional 90/20 Ultradian cycles, Google Tasks sync, instant thought capture, and local analytics. It is designed to stay quiet on system resources and run across Windows, macOS, and Linux.
@@ -31,7 +31,7 @@ A lightweight personal productivity timer for traditional Pomodoro sessions, opt
 
 ## 💻 Quick Start
 
-Download the archive for Windows, macOS, or Linux, extract it, and open **Ultimate Focus**. The music popup can install mpv on supported systems and retry playback. [Download the latest desktop release](https://github.com/ahmelkholy/ultimate-focus-timer/releases/latest).
+Download the archive for Windows, macOS, or Linux, extract it, and open **Tempo**. The music popup can install mpv on supported systems and retry playback. [Download the latest desktop release](https://github.com/ahmelkholy/tempo/releases/latest).
 
 ### Option 1: Traditional GUI (Recommended)
 
@@ -116,8 +116,8 @@ The timer opens in portrait on first use and remembers the window size and zoom 
 
 ```bash
 # Clone repository
-git clone https://github.com/ahmelkholy/ultimate-focus-timer.git
-cd ultimate-focus-timer
+git clone https://github.com/ahmelkholy/tempo.git
+cd tempo
 
 # Install Python dependencies
 pip install -r requirements.txt
@@ -147,8 +147,8 @@ python main.py --gui
 
 ```bash
 # Clone repository
-git clone https://github.com/ahmelkholy/ultimate-focus-timer.git
-cd ultimate-focus-timer
+git clone https://github.com/ahmelkholy/tempo.git
+cd tempo
 
 # Install dependencies
 pip install -r requirements.txt
@@ -280,7 +280,7 @@ The daemon exposes a simple REST API on `http://127.0.0.1:8765`:
 **GET /** - Health check
 
 ```json
-{"status": "online", "name": "Ultimate Focus Timer Daemon", "version": "2.1.0"}
+{"status": "online", "name": "Ultimate Focus Timer Daemon", "display_name": "Tempo Daemon", "version": "2.1.1"}
 ```
 
 **POST /start** - Start Ultradian session
