@@ -13,7 +13,7 @@ applications. The existing `focus gui` command also works from Terminal.
 
 The window keeps the timer, today's tasks, and music together. Use **Music → Change…** to play a link or open a local audio file or playlist. Music continues when
 you switch applications or minimize the window. Quitting the app stops it.
-Settings and statistics are under **More**. No login service is installed.
+Use **Settings** in the header or **More → Statistics**. No login service is installed.
 
 Local music uses mpv. For YouTube, the player first looks for yt-dlp in the app’s Python environment. Finder launches can discover Homebrew tools in
 `/opt/homebrew/bin` and `/usr/local/bin`. On macOS, each playback checks the
@@ -32,7 +32,7 @@ existing integration. Use the Dock to return to the window. Global hotkeys are
 opt-in on macOS. The native Tk runtime exceeds the project's 50 MB memory target
 on this machine even with an empty window; the app is not yet within that target.
 
-Use the **− / +** buttons beside the header to resize text and controls (65–150%).
+Use **More → Zoom in / Zoom out** to resize text and controls (65–150%).
 **⌘−**, **⌘+**, and **⌘0** zoom out, zoom in, and reset to 100%; on Windows/Linux
 use Ctrl instead. Zoom and window dimensions are saved separately.
 
@@ -40,7 +40,7 @@ The music card shows track time, buffering and pause state. Drag the timeline
 to seek, release the volume slider to apply a level, or choose an audio device
 under **Options → Audio output**. Player events drive the controls on macOS, Linux, and Windows.
 
-The task header shows **NORMAL** or **INSERT**. Click **? keys**, use **More →
+The task header shows **Editing** during text entry. Click **Shortcuts**, use **More →
 Keyboard shortcuts**, or press **? / F1** to see the full guide.
 
 | Key (Normal mode) | Action |

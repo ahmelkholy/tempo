@@ -10,6 +10,8 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 from tkinter import ttk
 
+from .appearance import palette, place_dialog
+
 
 def clock_text(seconds):
     seconds = max(0, int(seconds or 0))
@@ -57,11 +59,9 @@ class MusicPanel(tk.Frame):
         select_session=None,
         on_action=None,
     ):
-        self.dark = config.get("dark_theme", True)
-        self.bg = "#222830" if self.dark else "#f0f3f6"
-        self.fg = "#f4f6f8" if self.dark else "#17212b"
-        self.muted = "#a4afbc" if self.dark else "#5f6b78"
-        self.accent = "#94d8c1" if self.dark else "#176f58"
+        colors = palette(config, parent)
+        self.bg, self.fg = colors["card"], colors["fg"]
+        self.muted, self.accent = colors["muted"], colors["accent"]
         super().__init__(parent, bg=self.bg, padx=12, pady=10)
         self.controller = controller
         self._config = config
@@ -82,11 +82,11 @@ class MusicPanel(tk.Frame):
         self._volume_drag = False
         self._seek_drag = False
         self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=1)
+        self.columnconfigure(1, weight=0)
         header = tk.Frame(self, bg=self.bg)
         header.grid(row=0, column=0, columnspan=2, sticky="ew")
         header.columnconfigure(0, weight=1)
-        self._label("Music", 12, bold=True).grid(
+        self._label("Music", 14, bold=True).grid(
             in_=header, row=0, column=0, sticky="w"
         )
         self.status_label = self._label("Ready", 10, color=self.accent)
@@ -104,7 +104,7 @@ class MusicPanel(tk.Frame):
             self, text="Connect my personal Mix…", command=self._connect_chrome
         )
 
-        timeline = tk.Frame(self, bg=self.bg)
+        timeline = self.timeline = tk.Frame(self, bg=self.bg)
         timeline.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(6, 0))
         timeline.columnconfigure(1, weight=1)
         self.elapsed = tk.Label(
@@ -123,12 +123,13 @@ class MusicPanel(tk.Frame):
         )
         self.duration_label.grid(row=0, column=2)
 
-        transport = tk.Frame(self, bg=self.bg)
-        transport.grid(row=4, column=0, columnspan=2, pady=6)
+        transport = self.transport = tk.Frame(self, bg=self.bg)
+        transport.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(8, 6))
+        transport.columnconfigure(1, weight=1)
         self.previous = ttk.Button(
             transport,
-            text="‹ Prev",
-            width=6,
+            text="Prev",
+            width=4,
             command=lambda: self.run(controller.previous_track),
         )
         self.previous.grid(row=0, column=0, padx=3)
@@ -139,11 +140,11 @@ class MusicPanel(tk.Frame):
             command=self.toggle,
             style="MusicPlay.TButton",
         )
-        self.play_button.grid(row=0, column=1, padx=3)
+        self.play_button.grid(row=0, column=1, sticky="ew", padx=3)
         self.next = ttk.Button(
             transport,
-            text="Next ›",
-            width=6,
+            text="Next",
+            width=4,
             command=lambda: self.run(controller.next_track),
         )
         self.next.grid(row=0, column=2, padx=3)
@@ -155,7 +156,7 @@ class MusicPanel(tk.Frame):
         )
         self.stop.grid(row=0, column=3, padx=3)
 
-        volume_row = tk.Frame(self, bg=self.bg)
+        volume_row = self.volume_row = tk.Frame(self, bg=self.bg)
         volume_row.grid(row=5, column=0, columnspan=2, sticky="ew")
         volume_row.columnconfigure(1, weight=1)
         tk.Label(
@@ -191,9 +192,9 @@ class MusicPanel(tk.Frame):
         )
         self.playlist_combo.grid(row=6, column=0, sticky="ew", pady=(8, 0), padx=(0, 6))
         self.playlist_combo.bind("<<ComboboxSelected>>", select_playlist)
-        ttk.Button(self, text="Change…", command=add_link).grid(
-            row=6, column=1, sticky="e", pady=(8, 0)
-        )
+        self.change_button = ttk.Button(self, text="Change…", command=add_link)
+        self.change_button.grid(row=6, column=1, sticky="e", pady=(8, 0))
+        self._has_source = None
         self.device_menu = tk.Menu(menu, tearoff=False)
         menu.add_cascade(label="Audio output", menu=self.device_menu)
         self.device_var = tk.StringVar(value="auto")
@@ -284,6 +285,9 @@ class MusicPanel(tk.Frame):
         state = self.controller.playback_state
         if state == "loading":
             return
+        if state in ("stopped", "error") and not self.selected_source:
+            self._choose_music()
+            return
         action = (
             self.controller.pause_music
             if state == "playing"
@@ -352,7 +356,9 @@ class MusicPanel(tk.Frame):
         ttk.Label(frame, textvariable=notice, wraplength=320).pack(
             anchor="w", pady=(0, 8)
         )
-        button = ttk.Button(frame, text="Close", command=window.destroy)
+        button = ttk.Button(
+            frame, text="Close", command=window.destroy, style="Modern.TButton"
+        )
         button.pack(anchor="e")
         window.bind("<Escape>", lambda event: window.destroy())
 
@@ -428,6 +434,7 @@ class MusicPanel(tk.Frame):
             threading.Thread(target=connect, daemon=True).start()
 
         check()
+        place_dialog(window, self.winfo_toplevel())
 
     def _update_helper(self, attempt, install_player=None):
         self._update_attempt = attempt
@@ -525,12 +532,17 @@ class MusicPanel(tk.Frame):
             anchor="w", pady=(0, 8)
         )
 
-        def action(label, callback):
+        def action(label, callback, primary=False):
             def invoke():
                 self._dismiss_recovery()
                 callback()
 
-            ttk.Button(frame, text=label, command=invoke).pack(fill="x", pady=2)
+            ttk.Button(
+                frame,
+                text=label,
+                command=invoke,
+                style="Modern.TButton" if primary else "TButton",
+            ).pack(fill="x", pady=2)
 
         source = self.selected_source or status.get("current_playlist") or ""
         chrome_mix = (
@@ -543,7 +555,7 @@ class MusicPanel(tk.Frame):
             or "signed-out Mix" in status["error"]
         )
         if connection_failure:
-            action("Connect Chrome…", self._connect_chrome)
+            action("Connect Chrome…", self._connect_chrome, primary=True)
         if chrome_mix:
 
             def open_mix():
@@ -567,6 +579,7 @@ class MusicPanel(tk.Frame):
                 self._update_button = ttk.Button(
                     frame,
                     text="Install mpv and retry",
+                    style="Modern.TButton",
                     command=lambda: self._update_helper(attempt, install_player),
                 )
                 self._update_button.pack(fill="x", pady=2)
@@ -581,6 +594,7 @@ class MusicPanel(tk.Frame):
                 self._update_button = ttk.Button(
                     frame,
                     text="Update YouTube helper and retry",
+                    style="Modern.TButton",
                     command=lambda: self._update_helper(attempt),
                 )
                 self._update_button.pack(fill="x", pady=2)
@@ -593,6 +607,7 @@ class MusicPanel(tk.Frame):
                 )
         action("Choose music…", self._choose_music)
         action("Retry", lambda: self.run(self.controller.start_music))
+        place_dialog(window, self.winfo_toplevel())
 
     def refresh(self, status):
         state = status["state"]
@@ -611,6 +626,31 @@ class MusicPanel(tk.Frame):
             )
         )
         selected = self.selected_source
+        has_source = bool(
+            selected or status.get("is_playing") or state in ("loading", "error")
+        )
+        if self._has_source != has_source:
+            self._has_source = has_source
+            for control in (
+                self.timeline,
+                self.transport,
+                self.volume_row,
+                self.playlist_combo,
+                self.title_label,
+            ):
+                if has_source:
+                    control.grid()
+                else:
+                    control.grid_remove()
+            self.change_button.configure(
+                text="Change…" if has_source else "Choose music…"
+            )
+            self.change_button.grid(
+                row=6,
+                column=1 if has_source else 0,
+                columnspan=1 if has_source else 2,
+                sticky="e" if has_source else "ew",
+            )
         bookmark = status.get("bookmark", {})
         remembered = bookmark.get("title") if selected == bookmark.get("source") else ""
         self.title_label.configure(

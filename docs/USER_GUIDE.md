@@ -1,108 +1,28 @@
-# 🎯 Tempo - Complete Documentation
+# Using Tempo
 
-Welcome to the comprehensive documentation for Tempo, a cross-platform productivity application built with Python.
+[Download the latest release](https://github.com/ahmelkholy/tempo/releases/latest). Choose the Windows or Linux x86-64 archive, or the macOS archive for Apple Silicon or Intel. Extract the whole archive and open **Tempo**.
 
-## 📚 Table of Contents
+## Timer and tasks
 
-1. **[Quick Start](#-quick-start)**
-2. **[Installation Guide](#-installation-guide)**
-3. **[User Interfaces](#-user-interfaces)**
-4. **[Configuration](#-configuration)**
-5. **[Music Integration](#-music-integration)**
-6. **[Analytics & Insights](#-analytics--insights)**
-7. **[Advanced Features](#-advanced-features)**
-8. **[Troubleshooting](#-troubleshooting)**
-9. **[Development](#-development)**
+Press **Start focus**, choose a break, or use **Custom…** for a different duration. Change the defaults and notifications in **Settings → Timer**. Choose **Settings → Appearance → Interface size** to resize text, controls, tasks, and popups together. Dragging the window edge changes the available space. Tempo remembers both preferences.
 
-## 🚀 Quick Start
+Type a task, choose how many focus sessions you expect it to take, and press **Enter** or **Add**. Check it off when finished. Select **Shortcuts** for keyboard controls or **More → Statistics** to see past sessions. Google Tasks is optional under **Settings → Tasks**.
 
-Choose your desktop archive and extract the whole folder. Double-click **Tempo** to start. [Download the latest release](https://github.com/ahmelkholy/tempo/releases/latest).
+## Music
 
-| Computer | Archive suffix | Application |
-| --- | --- | --- |
-| Windows x86-64 | `windows-x86_64.zip` | `Tempo.exe` |
-| Mac with Apple Silicon | `macos-arm64.zip` | `Tempo.app` |
-| Mac with Intel | `macos-x86_64.zip` | `Tempo.app` |
-| Linux x86-64 | `linux-x86_64.tar.gz` | `Tempo` |
+Use **Choose music…** or **Change…** to open an audio file, playlist, or YouTube link. Tempo keeps your selection for the next launch. Press **Play** or start a focus session to listen. With the default settings, breaks pause and resume the same track.
 
-The download includes the Python runtime and YouTube helpers. Press **Play** to use the music popup if mpv needs installing. Use **Music → Change…** to select a song, playlist, or Mix.
+For a personal YouTube Mix, paste the full radio link and choose **Options → YouTube → Chrome session**. The connection popup uses the YouTube account signed in to Chrome on this device. YouTube supplies the live queue and can change its order. The player can also use a public Mix.
 
-## 📦 Installation Guide
+## Run from source
 
-For a source installation, use Python 3.11 or later with Tk. From the checkout, create a virtual environment with `python -m venv .venv`. Activate the environment with `.venv\Scripts\Activate.ps1` in Windows PowerShell or `source .venv/bin/activate` on macOS and Linux. Then run the following commands.
+Use Python 3.11 or later with Tk. Create a virtual environment with `python -m venv .venv`. Activate it with `.venv\Scripts\Activate.ps1` in Windows PowerShell or `source .venv/bin/activate` on macOS and Linux.
 
 ```sh
 python -m pip install .
 python main.py --gui
 ```
 
-Source installations use mpv for music and Deno for YouTube playback. [mpv installation](https://mpv.io/installation/) and [Deno installation](https://docs.deno.com/runtime/getting_started/installation/).
+Source installations use mpv for audio and Deno for YouTube playback. The desktop archives include Deno and yt-dlp. [mpv installation](https://mpv.io/installation/) and [Deno installation](https://docs.deno.com/runtime/getting_started/installation/).
 
-## 🖥️ User Interfaces
-
-### Interactive Launcher (Default)
-
-```bash
-python main.py
-```
-
-### GUI Interface
-
-```bash
-python main.py --gui
-```
-
-### Console Interface
-
-```bash
-python main.py --console
-```
-
-### Analytics Dashboard
-
-```bash
-python main.py --dashboard
-```
-
-## ⚙️ Configuration
-
-All settings are stored in `config.yml`:
-
-```yaml
-# Session Timings
-work_mins: 25
-short_break_mins: 5
-long_break_mins: 15
-
-# Music Settings
-classical_music: true
-classical_music_volume: 70
-fade_music_transitions: true
-
-# Interface Settings
-dark_theme: true
-accent_color: "#00ff00"
-animated_transitions: true
-```
-
-## 🎵 Music Integration
-
-The application supports multiple audio sources and provides seamless background music during focus sessions.
-
-## 📊 Analytics & Insights
-
-Comprehensive productivity tracking with visual charts and export capabilities.
-
-## 🛠️ Troubleshooting
-
-### Common Issues
-
-For detailed troubleshooting, see the main documentation files.
-
-## 🔧 Development
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
-
----
-
-**Thank you for using Tempo! 🎯**
+For the terminal timer, run `python main.py --console`. For the session dashboard, run `python main.py --dashboard`.

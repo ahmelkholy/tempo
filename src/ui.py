@@ -25,6 +25,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
+from .appearance import apply_styles, palette, place_dialog, scale_interface
 from .core import (
     ConfigManager,
     SessionManager,
@@ -59,6 +60,23 @@ _ANALYTICS_MODULES: Optional[Tuple[Any, Any, Any]] = None
 _DEFAULT_WINDOW_WIDTH = 360
 _DEFAULT_WINDOW_HEIGHT = 820
 _WINDOW_GEOMETRY_RE = re.compile(r"^(\d+)x(\d+)(?:([+-]-?\d+)([+-]-?\d+))?$")
+
+
+def _planned_sessions(field):
+    try:
+        count = int(field.get())
+        if count > 0:
+            return count
+    except ValueError:
+        pass
+    field.focus_set()
+    field.selection_range(0, "end")
+    messagebox.showerror(
+        "Planned sessions",
+        "Enter a positive whole number.",
+        parent=field.winfo_toplevel(),
+    )
+    return None
 
 
 def _parse_window_geometry(
@@ -162,39 +180,19 @@ class TaskInputDialog:
 
         # Create dialog window
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title("📝 Daily Tasks")
-        self.dialog.geometry("500x400")
+        self.dialog.title("Today’s tasks")
         self.dialog.resizable(True, True)
         self.dialog.transient(parent)
-        self.dialog.grab_set()
-
-        # Center the dialog
-        self.center_dialog()
 
         # Create widgets
         self.create_widgets()
+        place_dialog(self.dialog, parent)
+        self.dialog.grab_set()
+        self.dialog.bind("<Escape>", lambda event: self.cancel())
 
         # Focus on the first entry
         if hasattr(self, "task_entries") and self.task_entries:
             self.task_entries[0]["title"].focus()
-
-    def center_dialog(self):
-        """Center the dialog on the parent window"""
-        self.dialog.update_idletasks()
-
-        # Get parent position and size
-        parent_x = self.parent.winfo_rootx()
-        parent_y = self.parent.winfo_rooty()
-        parent_width = self.parent.winfo_width()
-        parent_height = self.parent.winfo_height()
-
-        # Calculate dialog position
-        dialog_width = 500
-        dialog_height = 400
-        x = parent_x + (parent_width - dialog_width) // 2
-        y = parent_y + (parent_height - dialog_height) // 2
-
-        self.dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
 
     def create_widgets(self):
         """Create and layout dialog widgets"""
@@ -211,7 +209,7 @@ class TaskInputDialog:
         # Title
         title_label = ttk.Label(
             main_frame,
-            text="📝 What are you working on?",
+            text="Add today’s tasks",
             font=("Arial", 14, "bold"),
         )
         title_label.grid(row=0, column=0, pady=(0, 10), sticky=tk.W)
@@ -271,7 +269,7 @@ class TaskInputDialog:
                     task_frame,
                     text=title_text,
                     font=("Arial", 12),
-                    foreground="gray" if task.completed else "black",
+                    style="Muted.TLabel" if task.completed else "TLabel",
                 )
                 task_label.grid(row=0, column=1, sticky=tk.W)
 
@@ -303,18 +301,18 @@ class TaskInputDialog:
         # Buttons
         save_button = ttk.Button(
             button_frame,
-            text="💾 Save Tasks",
+            text="Save tasks",
             command=self.save_tasks,
-            style="Accent.TButton",
+            style="Modern.TButton",
         )
         save_button.grid(row=0, column=0, padx=(0, 5))
 
-        cancel_button = ttk.Button(button_frame, text="❌ Cancel", command=self.cancel)
+        cancel_button = ttk.Button(button_frame, text="Cancel", command=self.cancel)
         cancel_button.grid(row=0, column=1, padx=(5, 0))
 
         # Skip button (for users who don't want to add tasks)
         skip_button = ttk.Button(
-            button_frame, text="⏭️ Skip for Today", command=self.skip_for_today
+            button_frame, text="Skip today", command=self.skip_for_today
         )
         skip_button.grid(row=0, column=2, padx=(10, 0))
 
@@ -984,7 +982,9 @@ class InlineTaskWidget:
         """Save the new task"""
         task_text = self.task_entry_var.get().strip()
         if task_text:
-            pomodoros = self.pomodoro_var.get()
+            pomodoros = _planned_sessions(self.pomodoro_spinbox)
+            if pomodoros is None:
+                return
             self.task_manager.add_task(task_text, pomodoros_planned=pomodoros)
             self.update_display()
 
@@ -1075,7 +1075,7 @@ class InlineTaskWidget:
         # Configure the task frame to fill available width
         parent.grid_columnconfigure(0, weight=1)  # Ensure parent expands column 0
         task_frame.grid_columnconfigure(
-            2, weight=1
+            1, weight=1
         )  # Make title column expand to fill space
 
         # Determine selection background for this row
@@ -1093,30 +1093,6 @@ class InlineTaskWidget:
             "<ButtonRelease-1>", lambda e: self.on_drag_release(e, task_frame, task)
         )
 
-        sync_state = self.task_manager.get_sync_status(task.id)
-        sync_icon_map = {
-            "synced": "☁",
-            "pending": "…",
-            "error": "⚠",
-            "disabled": "⏻",
-            "local": "·",
-        }
-        sync_color_map = {
-            "synced": "#00bfff",
-            "pending": "#ffaa00",
-            "error": "#ff5555",
-            "disabled": "#666666",
-            "local": "#666666",
-        }
-        sync_label = tk.Label(
-            task_frame,
-            text=sync_icon_map.get(sync_state, "·"),
-            font=("Arial", 11),
-            fg=sync_color_map.get(sync_state, "#666666"),
-            bg=sel_bg,
-        )
-        sync_label.grid(row=0, column=0, padx=(0, 2))
-
         # Completion checkbox
         completed_var = tk.BooleanVar(value=task.completed)
         check = ttk.Checkbutton(
@@ -1124,7 +1100,7 @@ class InlineTaskWidget:
             variable=completed_var,
             command=lambda: self.toggle_task(task, completed_var),
         )
-        check.grid(row=0, column=1, padx=(0, 4))  # Small padding after checkbox
+        check.grid(row=0, column=0, padx=(0, 4))  # Small padding after checkbox
 
         # Task title with green text color - MAXIMUM WIDTH
         title_text = task.title
@@ -1144,7 +1120,7 @@ class InlineTaskWidget:
             justify="left",
         )
         title_label.grid(
-            row=0, column=2, sticky=(tk.W, tk.E), padx=(0, 1)
+            row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 1)
         )  # Minimal padding for maximum width
 
         # Bind drag to title label as well
@@ -1167,7 +1143,7 @@ class InlineTaskWidget:
             fg=pomodoro_color,
             bg=sel_bg,
         )
-        pomodoro_label.grid(row=0, column=3, padx=(1, 1))  # Minimal padding
+        pomodoro_label.grid(row=0, column=2, padx=(1, 1))  # Minimal padding
 
         # Pomodoro buttons (only for incomplete tasks)
         if not task.completed:
@@ -1722,9 +1698,10 @@ class DashboardGUI:
 
             logger.debug("Creating root window")
             self.root = tk.Tk()
-            self.root.title("🎯 Focus Productivity Dashboard")
-            self.root.geometry("1200x800")
-            self.root.configure(bg="#2c3e50")
+            self.root.title("Tempo session dashboard")
+            self.root.geometry(
+                f"{min(1200, self.root.winfo_screenwidth())}x{min(800, self.root.winfo_screenheight()-60)}"
+            )
 
             # Set up proper window closing protocol
             self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -1735,13 +1712,14 @@ class DashboardGUI:
 
             # Configure style
             logger.debug("Configuring styles")
-            self.style = ttk.Style()
-            self.style.theme_use("clam")
-            self.configure_styles()
+            settings = ConfigManager()
+            self.colors = palette(settings, self.root)
+            apply_styles(self.root, self.colors)
 
             self.current_period = "week"
             logger.debug("Creating widgets")
             self.create_widgets()
+            scale_interface(self.root, settings.get("gui_zoom", 0.85))
             logger.debug("Updating dashboard")
             self.update_dashboard()
             logger.debug("Dashboard initialization complete")
@@ -1749,20 +1727,6 @@ class DashboardGUI:
             logger.exception("Error during dashboard initialization")
             self.cleanup()
             raise
-
-    def configure_styles(self):
-        """Configure custom styles for the GUI"""
-        # Configure notebook style
-        self.style.configure("TNotebook", background="#2c3e50")
-        self.style.configure(
-            "TNotebook.Tab", background="#34495e", foreground="white", padding=[20, 10]
-        )
-        self.style.map("TNotebook.Tab", background=[("selected", "#3498db")])
-
-        # Configure frame style
-        self.style.configure(
-            "Card.TFrame", background="#34495e", relief="raised", borderwidth=2
-        )
 
     def signal_handler(self, signum, frame):
         """Handle system signals for clean shutdown"""
@@ -1813,27 +1777,31 @@ class DashboardGUI:
     def create_widgets(self):
         """Create and layout GUI widgets"""
         # Header
-        header_frame = tk.Frame(self.root, bg="#2c3e50", height=80)
+        header_frame = tk.Frame(self.root, bg=self.colors["bg"], height=80)
         header_frame.pack(fill="x", padx=10, pady=(10, 0))
         header_frame.pack_propagate(False)
 
         title_label = tk.Label(
             header_frame,
-            text="🎯 FOCUS PRODUCTIVITY DASHBOARD",
+            text="Session dashboard",
             font=("Arial", 24, "bold"),
-            fg="#ecf0f1",
-            bg="#2c3e50",
+            fg=self.colors["fg"],
+            bg=self.colors["bg"],
         )
-        title_label.pack(pady=20)
+        title_label.pack(anchor="w", padx=8, pady=16)
 
         # Control frame
-        control_frame = tk.Frame(self.root, bg="#2c3e50", height=50)
+        control_frame = tk.Frame(self.root, bg=self.colors["bg"], height=50)
         control_frame.pack(fill="x", padx=10)
         control_frame.pack_propagate(False)
 
         # Period selection
         tk.Label(
-            control_frame, text="Period:", font=("Arial", 12), fg="white", bg="#2c3e50"
+            control_frame,
+            text="Period",
+            font=("Arial", 12),
+            fg=self.colors["fg"],
+            bg=self.colors["bg"],
         ).pack(side="left", padx=(0, 10))
 
         self.period_var = tk.StringVar(value=self.current_period)
@@ -1848,15 +1816,15 @@ class DashboardGUI:
         period_combo.bind("<<ComboboxSelected>>", self.on_period_change)
 
         # Buttons
-        ttk.Button(
-            control_frame, text="🔄 Refresh", command=self.update_dashboard
-        ).pack(side="left", padx=(0, 10))
-        ttk.Button(control_frame, text="📊 Export Data", command=self.export_data).pack(
+        ttk.Button(control_frame, text="Refresh", command=self.update_dashboard).pack(
+            side="left", padx=(0, 10)
+        )
+        ttk.Button(control_frame, text="Export data…", command=self.export_data).pack(
             side="left", padx=(0, 10)
         )
         ttk.Button(
             control_frame,
-            text="📈 Generate Report",
+            text="Generate report…",
             command=self.generate_visual_report,
         ).pack(side="left")
 
@@ -1866,15 +1834,15 @@ class DashboardGUI:
 
         # Overview tab
         self.overview_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.overview_frame, text="📊 Overview")
+        self.notebook.add(self.overview_frame, text="Overview")
 
         # Charts tab
         self.charts_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.charts_frame, text="📈 Charts")
+        self.notebook.add(self.charts_frame, text="Charts")
 
         # Details tab
         self.details_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.details_frame, text="📋 Details")
+        self.notebook.add(self.details_frame, text="Details")
 
         self.create_overview_tab()
         self.create_charts_tab()
@@ -1883,73 +1851,68 @@ class DashboardGUI:
     def create_overview_tab(self):
         """Create the overview statistics tab"""
         # Stats cards frame
-        stats_frame = tk.Frame(self.overview_frame, bg="#2c3e50")
+        stats_frame = tk.Frame(self.overview_frame, bg=self.colors["bg"])
         stats_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Create stats card containers
         self.stats_cards = {}
 
         # Top row - main stats
-        top_frame = tk.Frame(stats_frame, bg="#2c3e50")
+        top_frame = tk.Frame(stats_frame, bg=self.colors["bg"])
         top_frame.pack(fill="x", pady=(0, 10))
 
-        for i, (key, title, color) in enumerate(
-            [
-                ("total_sessions", "Total Sessions", "#3498db"),
-                ("work_sessions", "Work Sessions", "#2ecc71"),
-                ("productive_hours", "Productive Hours", "#e74c3c"),
-                ("days_active", "Active Days", "#f39c12"),
-            ]
-        ):
-            card = self.create_stat_card(top_frame, title, "0", color)
+        for key, title in [
+            ("total_sessions", "Total Sessions"),
+            ("work_sessions", "Work Sessions"),
+            ("productive_hours", "Productive Hours"),
+            ("days_active", "Active Days"),
+        ]:
+            card = self.create_stat_card(top_frame, title, "0")
             card.pack(side="left", fill="both", expand=True, padx=5)
             self.stats_cards[key] = card
 
         # Middle row - averages
-        mid_frame = tk.Frame(stats_frame, bg="#2c3e50")
+        mid_frame = tk.Frame(stats_frame, bg=self.colors["bg"])
         mid_frame.pack(fill="x", pady=(0, 10))
 
-        for i, (key, title, color) in enumerate(
-            [
-                ("avg_work_session", "Avg Work Session", "#9b59b6"),
-                ("avg_break_session", "Avg Break Session", "#1abc9c"),
-                ("work_ratio", "Work Ratio %", "#34495e"),
-                ("streak_days", "Current Streak", "#e67e22"),
-            ]
-        ):
-            card = self.create_stat_card(mid_frame, title, "0", color)
+        for key, title in [
+            ("avg_work_session", "Avg Work Session"),
+            ("avg_break_session", "Avg Break Session"),
+            ("work_ratio", "Work Ratio %"),
+            ("streak_days", "Current Streak"),
+        ]:
+            card = self.create_stat_card(mid_frame, title, "0")
             card.pack(side="left", fill="both", expand=True, padx=5)
             self.stats_cards[key] = card
 
         # Insights section
-        insights_frame = ttk.LabelFrame(
-            stats_frame, text="💡 Productivity Insights", style="Card.TFrame"
-        )
+        insights_frame = ttk.LabelFrame(stats_frame, text="Session insights")
         insights_frame.pack(fill="both", expand=True, pady=(10, 0))
 
         self.insights_text = tk.Text(
             insights_frame,
             height=8,
-            bg="#34495e",
-            fg="white",
-            font=("Consolas", 11),
+            bg=self.colors["card"],
+            fg=self.colors["fg"],
+            font=("Arial", 11),
             wrap="word",
             padx=10,
             pady=10,
         )
         self.insights_text.pack(fill="both", expand=True, padx=10, pady=10)
 
-    def create_stat_card(self, parent, title, value, color):
+    def create_stat_card(self, parent, title, value):
         """Create a statistics card widget"""
-        card = tk.Frame(parent, bg=color, relief="raised", bd=2)
+        color = self.colors["card"]
+        card = tk.Frame(parent, bg=color)
 
         title_label = tk.Label(
-            card, text=title, font=("Arial", 10, "bold"), fg="white", bg=color
+            card, text=title, font=("Arial", 10, "bold"), fg=self.colors["fg"], bg=color
         )
         title_label.pack(pady=(10, 5))
 
         value_label = tk.Label(
-            card, text=value, font=("Arial", 24, "bold"), fg="white", bg=color
+            card, text=value, font=("Arial", 24, "bold"), fg=self.colors["fg"], bg=color
         )
         value_label.pack(pady=(0, 10))
 
@@ -1961,7 +1924,7 @@ class DashboardGUI:
     def create_charts_tab(self):
         """Create the charts and visualizations tab"""
         # Charts will be created dynamically
-        self.charts_container = tk.Frame(self.charts_frame, bg="#2c3e50")
+        self.charts_container = tk.Frame(self.charts_frame, bg=self.colors["bg"])
         self.charts_container.pack(fill="both", expand=True)
 
     def create_details_tab(self):
@@ -2116,14 +2079,14 @@ class DashboardGUI:
                 text="No data available for the selected period",
                 font=("Arial", 16),
                 fg="gray",
-                bg="#2c3e50",
+                bg=self.colors["bg"],
             )
             no_data_label.pack(expand=True)
             return
 
         # Create matplotlib figure
         fig, ((ax1, ax2), (ax3, ax4)) = self.plt.subplots(2, 2, figsize=(12, 8))
-        fig.patch.set_facecolor("#2c3e50")
+        fig.patch.set_facecolor(self.colors["bg"])
 
         # Daily productivity trend
         daily_df = self.analyzer.get_daily_breakdown(sessions)
@@ -2137,14 +2100,14 @@ class DashboardGUI:
             )
             ax1.set_title(
                 "Daily Productivity Trend",
-                color="white",
+                color=self.colors["fg"],
                 fontsize=12,
                 fontweight="bold",
             )
-            ax1.set_ylabel("Work Hours", color="white")
-            ax1.tick_params(colors="white")
+            ax1.set_ylabel("Work Hours", color=self.colors["fg"])
+            ax1.tick_params(colors=self.colors["fg"])
             ax1.grid(True, alpha=0.3)
-            ax1.set_facecolor("#34495e")
+            ax1.set_facecolor(self.colors["card"])
 
         # Session type distribution
         session_types = {}
@@ -2163,7 +2126,7 @@ class DashboardGUI:
             )
             ax2.set_title(
                 "Session Type Distribution",
-                color="white",
+                color=self.colors["fg"],
                 fontsize=12,
                 fontweight="bold",
             )
@@ -2175,12 +2138,15 @@ class DashboardGUI:
 
         ax3.bar(hours, minutes, color="#9b59b6", alpha=0.7)
         ax3.set_title(
-            "Productivity by Hour", color="white", fontsize=12, fontweight="bold"
+            "Productivity by Hour",
+            color=self.colors["fg"],
+            fontsize=12,
+            fontweight="bold",
         )
-        ax3.set_xlabel("Hour of Day", color="white")
-        ax3.set_ylabel("Work Minutes", color="white")
-        ax3.tick_params(colors="white")
-        ax3.set_facecolor("#34495e")
+        ax3.set_xlabel("Hour of Day", color=self.colors["fg"])
+        ax3.set_ylabel("Work Minutes", color=self.colors["fg"])
+        ax3.tick_params(colors=self.colors["fg"])
+        ax3.set_facecolor(self.colors["card"])
 
         # Weekly focus trend (last 7 days)
         recent_sessions = [
@@ -2202,11 +2168,14 @@ class DashboardGUI:
 
         ax4.bar(days, minutes, color="#e67e22", alpha=0.7)
         ax4.set_title(
-            "Weekly Focus Pattern", color="white", fontsize=12, fontweight="bold"
+            "Weekly Focus Pattern",
+            color=self.colors["fg"],
+            fontsize=12,
+            fontweight="bold",
         )
-        ax4.set_ylabel("Work Minutes", color="white")
-        ax4.tick_params(colors="white")
-        ax4.set_facecolor("#34495e")
+        ax4.set_ylabel("Work Minutes", color=self.colors["fg"])
+        ax4.tick_params(colors=self.colors["fg"])
+        ax4.set_facecolor(self.colors["card"])
 
         # Style all subplots
         for ax in [ax1, ax2, ax3, ax4]:
@@ -2474,256 +2443,38 @@ class LauncherGUI:
 
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("🎯 Tempo Launcher")
-        self.root.geometry("600x500")
-        self.root.resizable(False, False)
-        self.root.configure(bg="#2c3e50")
-
-        # Center window
-        self.center_window()
-
-        # Configure styles
-        self.style = ttk.Style()
-        self.style.theme_use("clam")
-        self.configure_styles()
-
-        self.create_widgets()
-
-    def center_window(self):
-        """Center the window on screen"""
-        self.root.update_idletasks()
-        x = (self.root.winfo_screenwidth() // 2) - (600 // 2)
-        y = (self.root.winfo_screenheight() // 2) - (500 // 2)
-        self.root.geometry(f"600x500+{x}+{y}")
-
-    def configure_styles(self):
-        """Configure custom styles"""
-        self.style.configure(
-            "Title.TLabel",
-            font=("Arial", 20, "bold"),
-            background="#2c3e50",
-            foreground="#ecf0f1",
+        self.root.title("Tempo launcher")
+        settings = ConfigManager()
+        self.colors = palette(settings, self.root)
+        apply_styles(self.root, self.colors)
+        frame = ttk.Frame(self.root, padding=20)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="Tempo", font=("Arial", 22, "bold")).pack(
+            anchor="w", pady=(0, 12)
         )
-
-        self.style.configure(
-            "Subtitle.TLabel",
-            font=("Arial", 10),
-            background="#2c3e50",
-            foreground="#bdc3c7",
-        )
-
-        self.style.configure(
-            "Launch.TButton", font=("Arial", 12, "bold"), padding=(16, 12)
-        )
-
-        self.style.configure("Option.TButton", font=("Arial", 10), padding=(12, 8))
-
-        self.style.configure(
-            "Card.TFrame",
-            background="#34495e",
-            relief="raised",
-            borderwidth=2,
-        )
-
-    def create_widgets(self):
-        """Create and layout widgets"""
-        # Header
-        header_frame = tk.Frame(self.root, bg="#2c3e50", height=120)
-        header_frame.pack(fill="x", padx=20, pady=(20, 0))
-        header_frame.pack_propagate(False)
-
-        title_label = ttk.Label(header_frame, text="🎯 TEMPO", style="Title.TLabel")
-        title_label.pack(pady=(20, 5))
-
-        subtitle_label = ttk.Label(
-            header_frame,
-            text="Boost your productivity with the Pomodoro Technique",
-            style="Subtitle.TLabel",
-        )
-        subtitle_label.pack()
-
-        # Main content
-        content_frame = tk.Frame(self.root, bg="#2c3e50")
-        content_frame.pack(fill="both", expand=True, padx=20, pady=20)
-
-        # Launch options
-        options_frame = ttk.Frame(content_frame, style="Card.TFrame")
-        options_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # Option 1: GUI Timer
-        gui_frame = tk.Frame(options_frame, bg="#34495e")
-        gui_frame.pack(fill="x", padx=20, pady=(20, 10))
-
-        gui_icon = tk.Label(
-            gui_frame, text="🖥️", font=("Arial", 28), bg="#34495e", fg="#3498db"
-        )
-        gui_icon.pack(side="left", padx=(0, 15))
-
-        gui_info = tk.Frame(gui_frame, bg="#34495e")
-        gui_info.pack(side="left", fill="both", expand=True)
-
-        gui_title = tk.Label(
-            gui_info,
-            text="GUI Timer",
-            font=("Arial", 14, "bold"),
-            bg="#34495e",
-            fg="white",
-        )
-        gui_title.pack(anchor="w")
-
-        gui_desc = tk.Label(
-            gui_info,
-            text="Modern graphical interface with progress bars,\nstatistics, and easy session management",
-            font=("Arial", 9),
-            bg="#34495e",
-            fg="#bdc3c7",
-        )
-        gui_desc.pack(anchor="w")
-
-        gui_button = ttk.Button(
-            gui_frame,
-            text="Launch GUI",
-            style="Launch.TButton",
-            command=self.launch_gui,
-        )
-        gui_button.pack(side="right", padx=(10, 0))
-
-        # Separator
-        separator1 = ttk.Separator(options_frame, orient="horizontal")
-        separator1.pack(fill="x", padx=20, pady=10)
-
-        # Option 2: Console Timer
-        console_frame = tk.Frame(options_frame, bg="#34495e")
-        console_frame.pack(fill="x", padx=20, pady=10)
-
-        console_icon = tk.Label(
-            console_frame, text="⌨️", font=("Arial", 28), bg="#34495e", fg="#2ecc71"
-        )
-        console_icon.pack(side="left", padx=(0, 15))
-
-        console_info = tk.Frame(console_frame, bg="#34495e")
-        console_info.pack(side="left", fill="both", expand=True)
-
-        console_title = tk.Label(
-            console_info,
-            text="Console Timer",
-            font=("Arial", 14, "bold"),
-            bg="#34495e",
-            fg="white",
-        )
-        console_title.pack(anchor="w")
-
-        console_desc = tk.Label(
-            console_info,
-            text="Terminal-based interface for keyboard enthusiasts\nand minimal resource usage",
-            font=("Arial", 9),
-            bg="#34495e",
-            fg="#bdc3c7",
-        )
-        console_desc.pack(anchor="w")
-
-        console_button = ttk.Button(
-            console_frame,
-            text="Launch Console",
-            style="Launch.TButton",
-            command=self.launch_console,
-        )
-        console_button.pack(side="right", padx=(10, 0))
-
-        # Separator
-        separator2 = ttk.Separator(options_frame, orient="horizontal")
-        separator2.pack(fill="x", padx=20, pady=10)
-
-        # Option 3: Analytics Dashboard
-        dashboard_frame = tk.Frame(options_frame, bg="#34495e")
-        dashboard_frame.pack(fill="x", padx=20, pady=10)
-
-        dashboard_icon = tk.Label(
-            dashboard_frame, text="📊", font=("Arial", 28), bg="#34495e", fg="#e74c3c"
-        )
-        dashboard_icon.pack(side="left", padx=(0, 15))
-
-        dashboard_info = tk.Frame(dashboard_frame, bg="#34495e")
-        dashboard_info.pack(side="left", fill="both", expand=True)
-
-        dashboard_title = tk.Label(
-            dashboard_info,
-            text="Analytics Dashboard",
-            font=("Arial", 14, "bold"),
-            bg="#34495e",
-            fg="white",
-        )
-        dashboard_title.pack(anchor="w")
-
-        dashboard_desc = tk.Label(
-            dashboard_info,
-            text="Detailed productivity analytics with charts,\ninsights, and session history",
-            font=("Arial", 9),
-            bg="#34495e",
-            fg="#bdc3c7",
-        )
-        dashboard_desc.pack(anchor="w")
-
-        dashboard_button = ttk.Button(
-            dashboard_frame,
-            text="View Analytics",
-            style="Launch.TButton",
-            command=self.launch_dashboard,
-        )
-        dashboard_button.pack(side="right", padx=(10, 0))
-
-        # Bottom section
-        bottom_frame = tk.Frame(content_frame, bg="#2c3e50")
-        bottom_frame.pack(fill="x", pady=(20, 0))
-
-        # Utility buttons
-        utils_frame = tk.Frame(bottom_frame, bg="#2c3e50")
-        utils_frame.pack(fill="x")
-
-        ttk.Button(
-            utils_frame,
-            text="⚙️ Configuration",
-            style="Option.TButton",
-            command=self.open_config,
-        ).pack(side="left", padx=(0, 10))
-
-        ttk.Button(
-            utils_frame,
-            text="📁 Open Data Folder",
-            style="Option.TButton",
-            command=self.open_data_folder,
-        ).pack(side="left", padx=(0, 10))
-
-        ttk.Button(
-            utils_frame, text="🆘 Help", style="Option.TButton", command=self.show_help
-        ).pack(side="left", padx=(0, 10))
-
-        ttk.Button(
-            utils_frame, text="❌ Exit", style="Option.TButton", command=self.root.quit
-        ).pack(side="right")
-
-        # Status bar
-        status_frame = tk.Frame(bottom_frame, bg="#2c3e50", height=30)
-        status_frame.pack(fill="x", pady=(10, 0))
-        status_frame.pack_propagate(False)
-
-        self.status_label = tk.Label(
-            status_frame,
-            text="Ready to focus! Select an option above to begin.",
-            font=("Arial", 9),
-            bg="#2c3e50",
-            fg="#95a5a6",
-        )
-        self.status_label.pack(side="left", pady=5)
-
-        version_label = tk.Label(
-            status_frame,
-            text="v2.0 Python Edition",
-            font=("Arial", 9),
-            bg="#2c3e50",
-            fg="#95a5a6",
-        )
-        version_label.pack(side="right", pady=5)
+        for label, command, style in (
+            ("Open focus timer", self.launch_gui, "Modern.TButton"),
+            ("Open console", self.launch_console, "TButton"),
+            ("Session dashboard", self.launch_dashboard, "TButton"),
+        ):
+            ttk.Button(frame, text=label, command=command, style=style).pack(
+                fill="x", pady=3
+            )
+        tools = ttk.Frame(frame)
+        tools.pack(fill="x", pady=(12, 0))
+        for label, command in (
+            ("Config file", self.open_config),
+            ("Data folder", self.open_data_folder),
+            ("Help", self.show_help),
+            ("Exit", self.root.destroy),
+        ):
+            ttk.Button(tools, text=label, command=command, width=8).pack(
+                side="left", padx=2
+            )
+        self.status_label = ttk.Label(frame, style="Muted.TLabel")
+        self.status_label.pack(anchor="w", pady=(6, 0))
+        scale_interface(self.root, settings.get("gui_zoom", 0.85))
+        self.root.tk.call("tk::PlaceWindow", self.root._w, "center")
 
     def update_status(self, message: str):
         """Update status message"""
@@ -2732,97 +2483,51 @@ class LauncherGUI:
 
     def launch_gui(self):
         """Launch the GUI timer"""
+        self._launch_window("gui", "Focus timer")
+
+    def _launch_window(self, mode, title):
         try:
-            self.update_status("Launching GUI Timer...")
-            self.root.withdraw()  # Hide launcher
-
-            # Create and run GUI
-            gui = FocusGUI()
-            gui.run()
-
-            # Show launcher again when GUI closes
-            self.root.deiconify()
-            self.update_status("GUI Timer closed. Ready for next session!")
-
-        except Exception as e:
-            messagebox.showerror("Launch Error", f"Failed to launch GUI Timer:\n{e!s}")
-            self.update_status("Error launching GUI Timer")
+            subprocess.Popen([sys.executable, "-m", "main", f"--{mode}"])
+            self.update_status(f"{title} opened.")
+        except OSError as exc:
+            messagebox.showerror(title, str(exc), parent=self.root)
 
     def launch_console(self):
-        """Launch the console timer"""
+        """Open the installed console entry point in a terminal."""
+        import shlex
+        import shutil
+
+        command = [
+            sys.executable,
+            str(Path(__file__).resolve().parent.parent / "main.py"),
+            "--console",
+        ]
         try:
-            self.update_status("Launching Console Timer...")
-
-            # Launch in new terminal/command prompt
-            python_exe = sys.executable
-            script_path = Path(__file__).parent / "src" / "focus_console.py"
-
-            if os.name == "nt":  # Windows
-                subprocess.Popen(
-                    [
-                        "cmd",
-                        "/c",
-                        "start",
-                        "cmd",
-                        "/k",
-                        f'"{python_exe}" "{script_path}" --interactive',
-                    ]
+            if os.name == "nt":
+                subprocess.Popen(command, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            elif sys.platform == "darwin":
+                script = 'tell application "Terminal" to do script ' + json.dumps(
+                    shlex.join(command)
                 )
-            elif os.name == "posix":  # macOS/Linux
-                if sys.platform == "darwin":  # macOS
-                    subprocess.Popen(
-                        [
-                            "osascript",
-                            "-e",
-                            f'tell application "Terminal" to do script "{python_exe} {script_path} --interactive"',
-                        ]
-                    )
-                else:  # Linux
-                    # Try different terminal emulators
-                    terminals = ["gnome-terminal", "xterm", "konsole", "xfce4-terminal"]
-                    for terminal in terminals:
-                        try:
-                            subprocess.Popen(
-                                [
-                                    terminal,
-                                    "-e",
-                                    f"{python_exe} {script_path} --interactive",
-                                ]
-                            )
-                            break
-                        except FileNotFoundError:
-                            continue
-                    else:
-                        # Fallback: run in current terminal
-                        subprocess.Popen(
-                            [python_exe, str(script_path), "--interactive"]
-                        )
-
-            self.update_status("Console Timer launched in new terminal")
-
-        except Exception as e:
-            messagebox.showerror(
-                "Launch Error", f"Failed to launch Console Timer:\n{e!s}"
-            )
-            self.update_status("Error launching Console Timer")
+                subprocess.run(["osascript", "-e", script], check=True)
+            else:
+                for terminal, flag in (
+                    ("x-terminal-emulator", "-e"),
+                    ("gnome-terminal", "--"),
+                    ("konsole", "-e"),
+                    ("xterm", "-e"),
+                ):
+                    if shutil.which(terminal):
+                        subprocess.Popen([terminal, flag, *command])
+                        break
+                else:
+                    subprocess.Popen(command)
+            self.update_status("Console opened.")
+        except (OSError, subprocess.CalledProcessError) as exc:
+            messagebox.showerror("Console", str(exc), parent=self.root)
 
     def launch_dashboard(self):
-        """Launch the analytics dashboard"""
-        try:
-            self.update_status("Loading Analytics Dashboard...")
-
-            # Create and run dashboard
-            analyzer = SessionAnalyzer()
-            dashboard = DashboardGUI(analyzer)
-            dashboard.run()
-
-            self.update_status("Analytics Dashboard closed")
-
-        except Exception as e:
-            messagebox.showerror(
-                "Launch Error", f"Failed to launch Analytics Dashboard:\n{e!s}"
-            )
-            self.update_status("Error launching Analytics Dashboard")
+        self._launch_window("dashboard", "Session dashboard")
 
     def open_config(self):
         """Open configuration file"""
@@ -2871,86 +2576,12 @@ class LauncherGUI:
 
     def show_help(self):
         """Show help information"""
-        help_text = """🎯 TEMPO HELP
-
-WHAT IS TEMPO?
-Tempo is a productivity application based on the Pomodoro Technique:
-• Work in focused 25-minute sessions
-• Take short 5-minute breaks between sessions
-• Take longer 15-30 minute breaks every 4 sessions
-• Classical music helps maintain concentration
-
-AVAILABLE MODES:
-
-🖥️ GUI Timer
-• Visual interface with progress bars
-• Real-time statistics and session tracking
-• Easy-to-use controls and settings
-• Perfect for desktop users
-
-⌨️ Console Timer
-• Terminal-based interface
-• Minimal resource usage
-• Keyboard shortcuts and commands
-• Great for developers and CLI enthusiasts
-
-📊 Analytics Dashboard
-• Detailed productivity insights
-• Charts and visualizations
-• Export capabilities
-• Track your progress over time
-
-FEATURES:
-• Cross-platform compatibility (Windows, macOS, Linux)
-• Classical music integration with MPV player
-• Smart notifications and system tray integration
-• Comprehensive session logging and analytics
-• Flexible configuration options
-• Auto-start sessions and breaks
-
-GETTING STARTED:
-1. Choose your preferred interface (GUI or Console)
-2. Configure your session durations if needed
-3. Start your first work session
-4. Take breaks when prompted
-5. Review your progress in the Analytics Dashboard
-
-For more help, visit the configuration file or check the documentation.
-"""
-
-        # Create help window
-        help_window = tk.Toplevel(self.root)
-        help_window.title("🆘 Tempo Help")
-        help_window.geometry("600x700")
-        help_window.resizable(True, True)
-        help_window.configure(bg="#2c3e50")
-
-        # Text widget with scrollbar
-        text_frame = tk.Frame(help_window, bg="#2c3e50")
-        text_frame.pack(fill="both", expand=True, padx=20, pady=20)
-
-        text_widget = tk.Text(
-            text_frame,
-            wrap="word",
-            bg="#34495e",
-            fg="white",
-            font=("Consolas", 11),
-            padx=15,
-            pady=15,
+        messagebox.showinfo(
+            "Using Tempo",
+            "Open the focus timer to start a session, add tasks, or play music. "
+            "Settings controls session lengths and appearance. Open the dashboard to review past sessions.",
+            parent=self.root,
         )
-        scrollbar = ttk.Scrollbar(
-            text_frame, orient="vertical", command=text_widget.yview
-        )
-        text_widget.configure(yscrollcommand=scrollbar.set)
-
-        text_widget.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        text_widget.insert("1.0", help_text)
-        text_widget.config(state="disabled")
-
-        # Close button
-        ttk.Button(help_window, text="Close", command=help_window.destroy).pack(pady=10)
 
     def run(self):
         """Start the launcher GUI"""
@@ -2965,70 +2596,53 @@ class CustomSessionDialog:
 
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Custom Session")
-        self.dialog.geometry("300x200")
-        self.dialog.resizable(True, True)
-
-        # Center on parent
         self.dialog.transient(parent)
-        self.dialog.grab_set()
-
-        # Main frame
-        frame = ttk.Frame(self.dialog, padding="20")
-        frame.pack(fill=tk.BOTH, expand=True)
-
-        # Session type
-        ttk.Label(frame, text="Session Type:").pack(pady=5)
-        self.type_var = tk.StringVar(value="work")
-        type_frame = ttk.Frame(frame)
-        type_frame.pack(pady=5)
-
-        ttk.Radiobutton(
-            type_frame, text="Work", variable=self.type_var, value="work"
-        ).pack(side=tk.LEFT, padx=10)
-        ttk.Radiobutton(
-            type_frame, text="Break", variable=self.type_var, value="break"
-        ).pack(side=tk.LEFT, padx=10)
-
-        # Duration
-        ttk.Label(frame, text="Duration (minutes):").pack(pady=(20, 5))
-        self.duration_var = tk.StringVar(value="25")
-        duration_entry = ttk.Entry(frame, textvariable=self.duration_var, width=10)
-        duration_entry.pack(pady=5)
-        duration_entry.focus()
-
-        # Buttons
-        button_frame = ttk.Frame(frame)
-        button_frame.pack(pady=20)
-
-        ttk.Button(button_frame, text="Start", command=self.ok_clicked).pack(
-            side=tk.LEFT, padx=5
+        frame = ttk.Frame(self.dialog, padding=20)
+        frame.pack(fill="both", expand=True)
+        self.type_var = tk.StringVar(self.dialog, "work")
+        self.duration_var = tk.StringVar(self.dialog, "25")
+        for col, (label, value) in enumerate((("Focus", "work"), ("Break", "break"))):
+            ttk.Radiobutton(
+                frame, text=label, variable=self.type_var, value=value
+            ).grid(row=0, column=col, sticky="w")
+        ttk.Label(frame, text="Duration in minutes").grid(
+            row=1, column=0, sticky="w", pady=12, padx=(0, 16)
         )
-        ttk.Button(button_frame, text="Cancel", command=self.cancel_clicked).pack(
-            side=tk.LEFT, padx=5
+        self.duration_entry = ttk.Spinbox(
+            frame, from_=1, to=9999, width=6, textvariable=self.duration_var
         )
-
-        # Enter key binding
+        self.duration_entry.grid(row=1, column=1)
+        self.notice = ttk.Label(frame, style="Error.TLabel")
+        self.notice.grid(row=2, column=0, columnspan=2, sticky="w")
+        ttk.Button(frame, text="Cancel", command=self.cancel_clicked).grid(
+            row=3, column=0, sticky="e", padx=4
+        )
+        ttk.Button(
+            frame, text="Start", style="Modern.TButton", command=self.ok_clicked
+        ).grid(row=3, column=1, sticky="e")
         self.dialog.bind("<Return>", lambda e: self.ok_clicked())
         self.dialog.bind("<Escape>", lambda e: self.cancel_clicked())
+        place_dialog(self.dialog, parent)
+        self.dialog.grab_set()
+        self.duration_entry.focus_set()
+        self.duration_entry.selection_range(0, "end")
 
     def ok_clicked(self):
         try:
             duration = int(self.duration_var.get())
-            if duration <= 0:
-                raise ValueError("Duration must be positive")
-
-            session_type = (
-                SessionType.WORK
-                if self.type_var.get() == "work"
-                else SessionType.SHORT_BREAK
-            )
-            self.result = (session_type, duration)
-            self.dialog.destroy()
-
+            if duration < 1:
+                raise ValueError
         except ValueError:
-            messagebox.showerror(
-                "Invalid Input", "Please enter a valid positive number for duration."
-            )
+            self.notice.configure(text="Enter a positive whole number.")
+            self.duration_entry.focus_set()
+            return
+        kind = (
+            SessionType.WORK
+            if self.type_var.get() == "work"
+            else SessionType.SHORT_BREAK
+        )
+        self.result = (kind, duration)
+        self.dialog.destroy()
 
     def cancel_clicked(self):
         self.dialog.destroy()
@@ -3051,11 +2665,7 @@ class SettingsDialog:
 
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Settings")
-        self.dialog.geometry("500x600")
-        self.dialog.resizable(True, True)
-
         self.dialog.transient(parent)
-        self.dialog.grab_set()
 
         default_credentials_path = (
             str(self.google_integration.credentials_file)
@@ -3070,132 +2680,171 @@ class SettingsDialog:
         self.google_task_list_lookup: Dict[str, str] = {}
         self.google_task_list_combo = None
 
-        main_frame = ttk.Frame(self.dialog, padding="20")
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        notebook = ttk.Notebook(main_frame)
-        notebook.pack(fill=tk.BOTH, expand=True, pady=10)
-
-        self.create_timer_tab(notebook)
-        self.create_music_tab(notebook)
-        self.create_notifications_tab(notebook)
-        self.create_tasks_tab(notebook)
-        self.create_theme_tab(notebook)
-
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(pady=10)
-
-        ttk.Button(
-            button_frame, text="Save", command=self.save_application_settings
-        ).pack(side=tk.LEFT, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=self.cancel).pack(
-            side=tk.LEFT, padx=5
-        )
-
-    def create_timer_tab(self, notebook):
-        """Create timer settings tab"""
-        tab = ttk.Frame(notebook, padding="10")
-        notebook.add(tab, text="Timer")
-
-        ttk.Label(tab, text="Work Duration (minutes):").grid(
-            row=0, column=0, sticky=tk.W, pady=5
-        )
-        self.work_mins = tk.StringVar(value=self.config.get("work_mins"))
-        ttk.Entry(tab, textvariable=self.work_mins).grid(row=0, column=1, sticky=tk.W)
-
-        ttk.Label(tab, text="Short Break (minutes):").grid(
-            row=1, column=0, sticky=tk.W, pady=5
-        )
-        self.short_break_mins = tk.StringVar(value=self.config.get("short_break_mins"))
-        ttk.Entry(tab, textvariable=self.short_break_mins).grid(
-            row=1, column=1, sticky=tk.W
-        )
-
-        ttk.Label(tab, text="Long Break (minutes):").grid(
-            row=2, column=0, sticky=tk.W, pady=5
-        )
-        self.long_break_mins = tk.StringVar(value=self.config.get("long_break_mins"))
-        ttk.Entry(tab, textvariable=self.long_break_mins).grid(
-            row=2, column=1, sticky=tk.W
-        )
-
-        ttk.Label(tab, text="Long Break Interval:").grid(
-            row=3, column=0, sticky=tk.W, pady=5
-        )
-        self.long_break_interval = tk.StringVar(
-            value=self.config.get("long_break_interval")
-        )
-        ttk.Entry(tab, textvariable=self.long_break_interval).grid(
-            row=3, column=1, sticky=tk.W
-        )
-
-    def create_music_tab(self, notebook):
-        """Create music settings tab"""
-        tab = ttk.Frame(notebook, padding="10")
-        notebook.add(tab, text="Music")
-
-        ttk.Label(tab, text="MPV Executable Path:").grid(
-            row=0, column=0, sticky=tk.W, pady=5
-        )
-        self.mpv_executable = tk.StringVar(value=self.config.get("mpv_executable"))
-        ttk.Entry(tab, textvariable=self.mpv_executable, width=40).grid(
-            row=0, column=1, sticky=tk.W
-        )
-
-        ttk.Label(tab, text="Default Playlist Path:").grid(
-            row=1, column=0, sticky=tk.W, pady=5
-        )
-        self.default_playlist = tk.StringVar(
-            value=self.config.get("classical_music_default_playlist")
-        )
-        ttk.Entry(tab, textvariable=self.default_playlist, width=40).grid(
-            row=1, column=1, sticky=tk.W
-        )
-
-        ttk.Label(tab, text="Music Directory:").grid(
-            row=2, column=0, sticky=tk.W, pady=5
-        )
-        self.music_directory = tk.StringVar(
-            value=self.config.get("classical_music_playlist_dir")
-        )
-        ttk.Entry(tab, textvariable=self.music_directory, width=40).grid(
-            row=2, column=1, sticky=tk.W
-        )
-
-    def create_notifications_tab(self, notebook):
-        """Create notifications settings tab"""
-        tab = ttk.Frame(notebook, padding="10")
-        notebook.add(tab, text="Notifications")
-
-        self.notify = tk.BooleanVar(value=self.config.get("notify"))
-        ttk.Checkbutton(tab, text="Enable Notifications", variable=self.notify).grid(
-            row=0, column=0, columnspan=2, sticky=tk.W, pady=5
-        )
-
+        main_frame = ttk.Frame(self.dialog, padding=16)
+        main_frame.pack(fill="both", expand=True)
+        self.notebook = ttk.Notebook(main_frame)
+        self.notebook.pack(fill="both", expand=True)
+        self.timer_fields = {}
+        self.timer_tab = self.tab("Timer")
+        self.timer_tab.columnconfigure(0, weight=1)
+        for row, (key, label, unit, limit) in enumerate(
+            (
+                ("work_mins", "Focus", "minutes", 120),
+                ("short_break_mins", "Short break", "minutes", 60),
+                ("long_break_mins", "Long break", "minutes", 120),
+                ("long_break_interval", "Long break after", "focus sessions", 99),
+            )
+        ):
+            ttk.Label(self.timer_tab, text=label).grid(
+                row=row, column=0, sticky="w", pady=5
+            )
+            value = tk.StringVar(self.dialog, self.config.get(key))
+            field = ttk.Spinbox(
+                self.timer_tab, from_=1, to=limit, width=5, textvariable=value
+            )
+            field.grid(row=row, column=1, padx=8)
+            ttk.Label(self.timer_tab, text=unit, style="Muted.TLabel").grid(
+                row=row, column=2, sticky="w"
+            )
+            self.timer_fields[key] = (label, value, field)
+        ttk.Separator(self.timer_tab).grid(row=4, columnspan=3, sticky="ew", pady=9)
+        self.notify = tk.BooleanVar(self.dialog, self.config.get("notify"))
         self.desktop_notifications = tk.BooleanVar(
-            value=self.config.get("desktop_notifications")
+            self.dialog, self.config.get("desktop_notifications")
         )
-        ttk.Checkbutton(
-            tab,
-            text="Enable Desktop Notifications",
-            variable=self.desktop_notifications,
-        ).grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=5)
+        for row, (label, var) in enumerate(
+            (
+                ("Session notifications", self.notify),
+                ("Desktop notifications", self.desktop_notifications),
+            ),
+            5,
+        ):
+            ttk.Checkbutton(self.timer_tab, text=label, variable=var).grid(
+                row=row, columnspan=3, sticky="w", pady=3
+            )
+        music = self.tab("Music")
+        music.columnconfigure(0, weight=1)
+        self.music_fields = {}
+        for i, (key, label, chooser) in enumerate(
+            (
+                (
+                    "classical_music_default_playlist",
+                    "Default song, playlist or link",
+                    filedialog.askopenfilename,
+                ),
+                (
+                    "classical_music_playlist_dir",
+                    "Music folder",
+                    filedialog.askdirectory,
+                ),
+                ("mpv_executable", "mpv player", filedialog.askopenfilename),
+            )
+        ):
+            value = tk.StringVar(self.dialog, self.config.get(key) or "")
+            self.music_fields[key] = value
+            ttk.Label(music, text=label).grid(
+                row=i * 2, columnspan=2, sticky="w", pady=(5, 2)
+            )
+            ttk.Entry(music, textvariable=value, width=32).grid(
+                row=i * 2 + 1, column=0, sticky="ew"
+            )
 
-    def create_theme_tab(self, notebook):
-        """Create theme settings tab"""
-        tab = ttk.Frame(notebook, padding="10")
-        notebook.add(tab, text="Theme")
+            def browse(var=value, pick=chooser, title=label):
+                path = pick(parent=self.dialog, title=title)
+                if path:
+                    var.set(path)
 
-        self.dark_theme = tk.BooleanVar(value=self.config.get("dark_theme"))
-        ttk.Checkbutton(tab, text="Enable Dark Theme", variable=self.dark_theme).grid(
-            row=0, column=0, columnspan=2, sticky=tk.W, pady=5
+            ttk.Button(music, text="Browse…", command=browse).grid(
+                row=i * 2 + 1, column=1, padx=(6, 0)
+            )
+        appearance = self.tab("Appearance")
+        self.dark_theme = tk.BooleanVar(
+            self.dialog, self.config.get("dark_theme", True)
         )
-
-        ttk.Label(tab, text="Accent Color:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.accent_color = tk.StringVar(value=self.config.get("accent_color"))
-        ttk.Entry(tab, textvariable=self.accent_color).grid(
-            row=1, column=1, sticky=tk.W
+        ttk.Checkbutton(appearance, text="Dark theme", variable=self.dark_theme).grid(
+            row=0, columnspan=3, sticky="w", pady=(0, 12)
         )
+        self.accent_color = tk.StringVar(
+            self.dialog, self.config.get("accent_color") or "#00ff00"
+        )
+        ttk.Label(appearance, text="Accent color").grid(
+            row=1, columnspan=3, sticky="w", pady=(0, 5)
+        )
+        self.swatch = tk.Label(appearance, width=3, relief="solid", borderwidth=1)
+        self.swatch.grid(row=2, column=0, sticky="ns", padx=(0, 8))
+
+        def update_swatch(*args):
+            options = {
+                "dark_theme": self.dark_theme.get(),
+                "accent_color": self.accent_color.get(),
+            }
+            self.swatch.configure(bg=palette(options, self.dialog)["accent"])
+
+        def choose_color():
+            from tkinter import colorchooser
+
+            color = colorchooser.askcolor(
+                parent=self.dialog, color=self.swatch.cget("background")
+            )[1]
+            if color:
+                self.accent_color.set(color)
+
+        for var in (self.dark_theme, self.accent_color):
+            var.trace_add("write", update_swatch)
+        update_swatch()
+        ttk.Button(appearance, text="Choose color…", command=choose_color).grid(
+            row=2, column=1
+        )
+        ttk.Button(
+            appearance,
+            text="Use default",
+            command=lambda: self.accent_color.set("#00ff00"),
+        ).grid(row=2, column=2, padx=5)
+        current = round(float(self.config.get("gui_zoom", 0.85)) * 100)
+        sizes = sorted({65, 75, 85, 100, 115, 125, 150, current})
+        self.interface_size = tk.StringVar(self.dialog, f"{current}%")
+        ttk.Label(appearance, text="Interface size").grid(
+            row=3, columnspan=3, sticky="w", pady=(14, 4)
+        )
+        ttk.Combobox(
+            appearance,
+            textvariable=self.interface_size,
+            values=[f"{size}%" for size in sizes],
+            width=7,
+            state="readonly",
+        ).grid(row=4, columnspan=3, sticky="w")
+        self.tasks_tab = self.tab("Tasks")
+        self.create_tasks_tab()
+        self._opened_tasks = False
+        self.notebook.bind("<<NotebookTabChanged>>", self._tab_changed)
+
+        self.notice = ttk.Label(main_frame, style="Error.TLabel", wraplength=360)
+        self.notice.pack(anchor="w")
+        buttons = ttk.Frame(main_frame)
+        buttons.pack(fill="x", pady=(5, 0))
+        ttk.Button(
+            buttons,
+            text="Save",
+            style="Modern.TButton",
+            command=self.save_application_settings,
+        ).pack(side="right")
+        ttk.Button(buttons, text="Cancel", command=self.cancel).pack(
+            side="right", padx=6
+        )
+        self.dialog.bind("<Escape>", lambda e: self.cancel())
+        place_dialog(self.dialog, parent)
+        self.dialog.grab_set()
+        self.notebook.focus_set()
+
+    def tab(self, name):
+        frame = ttk.Frame(self.notebook, padding=14)
+        self.notebook.add(frame, text=name)
+        return frame
+
+    def _tab_changed(self, event):
+        if not self._opened_tasks and self.notebook.select() == str(self.tasks_tab):
+            self._opened_tasks = True
+            self.refresh_google_task_lists()
 
     @staticmethod
     def _task_list_display(
@@ -3207,78 +2856,46 @@ class SettingsDialog:
             return f"{display} ({task_list_id})"
         return display
 
-    def create_tasks_tab(self, notebook):
-        """Create Google Tasks settings tab."""
-        tab = ttk.Frame(notebook, padding="10")
-        notebook.add(tab, text="Tasks")
-        tab.grid_columnconfigure(1, weight=1)
-
-        ttk.Label(tab, text="Google Tasks Status:").grid(
-            row=0, column=0, sticky=tk.NW, pady=5
+    def create_tasks_tab(self):
+        tab = self.tasks_tab
+        tab.columnconfigure(0, weight=1)
+        ttk.Label(tab, text="Google Tasks", font=("Arial", 13, "bold")).grid(
+            row=0, columnspan=2, sticky="w"
         )
         ttk.Label(
-            tab,
-            textvariable=self.google_status_var,
-            wraplength=320,
-            justify=tk.LEFT,
-        ).grid(row=0, column=1, columnspan=2, sticky=tk.W, pady=5)
-
-        ttk.Label(tab, text="OAuth Client JSON:").grid(
-            row=1, column=0, sticky=tk.W, pady=5
-        )
-        ttk.Entry(tab, textvariable=self.google_credentials_path, width=40).grid(
-            row=1, column=1, sticky=(tk.W, tk.E), pady=5
-        )
-        ttk.Button(tab, text="Browse...", command=self.browse_google_credentials).grid(
-            row=1, column=2, padx=(5, 0), pady=5, sticky=tk.W
-        )
-        ttk.Button(
-            tab, text="Paste JSON...", command=self.paste_google_credentials
-        ).grid(row=1, column=3, padx=(5, 0), pady=5, sticky=tk.W)
-
+            tab, textvariable=self.google_status_var, wraplength=335, justify="left"
+        ).grid(row=1, columnspan=2, sticky="w", pady=(4, 8))
         actions = ttk.Frame(tab)
-        actions.grid(row=2, column=1, columnspan=3, sticky=tk.W, pady=(5, 10))
+        actions.grid(row=2, columnspan=2, sticky="w")
         ttk.Button(
-            actions,
-            text="Connect Google Tasks",
-            command=self.connect_google_tasks,
-        ).pack(side=tk.LEFT, padx=(0, 5))
+            actions, text="Connect Google Tasks", command=self.connect_google_tasks
+        ).pack(side="left")
         ttk.Button(
-            actions,
-            text="Disconnect",
-            command=self.disconnect_google_tasks,
-        ).pack(side=tk.LEFT)
-
-        ttk.Label(tab, text="Google Task List:").grid(
-            row=3, column=0, sticky=tk.W, pady=5
+            actions, text="Disconnect", command=self.disconnect_google_tasks
+        ).pack(side="left", padx=5)
+        ttk.Label(tab, text="Task list").grid(
+            row=3, columnspan=2, sticky="w", pady=(10, 3)
         )
         self.google_task_list_combo = ttk.Combobox(
-            tab,
-            textvariable=self.google_task_list_var,
-            state="readonly",
-            width=40,
+            tab, textvariable=self.google_task_list_var, state="readonly"
         )
-        self.google_task_list_combo.grid(row=3, column=1, sticky=(tk.W, tk.E), pady=5)
-        ttk.Button(
-            tab, text="Refresh Lists", command=self.refresh_google_task_lists
-        ).grid(row=3, column=2, padx=(5, 0), pady=5, sticky=tk.W)
-        ttk.Button(
-            tab, text="Enable Tasks API", command=self.open_google_tasks_api_setup
-        ).grid(row=3, column=3, padx=(5, 0), pady=5, sticky=tk.W)
-
-        ttk.Label(
-            tab,
-            text=(
-                "Click Connect Google Tasks to launch setup if needed, then open "
-                "your browser for Google sign-in. The saved token stays local on "
-                "this machine."
-            ),
-            wraplength=420,
-            justify=tk.LEFT,
-        ).grid(row=4, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
-
-        self.refresh_google_status()
-        self.refresh_google_task_lists()
+        self.google_task_list_combo.grid(row=4, column=0, sticky="ew")
+        ttk.Button(tab, text="Refresh", command=self.refresh_google_task_lists).grid(
+            row=4, column=1, padx=(6, 0)
+        )
+        tools = ttk.Menubutton(tab, text="Account setup")
+        tools.grid(row=5, columnspan=2, sticky="w", pady=(10, 0))
+        menu = tk.Menu(tools, tearoff=False)
+        tools.configure(menu=menu)
+        menu.add_command(
+            label="Choose credentials file…", command=self.browse_google_credentials
+        )
+        menu.add_command(
+            label="Paste credentials…", command=self.paste_google_credentials
+        )
+        menu.add_command(
+            label="Enable Tasks API…", command=self.open_google_tasks_api_setup
+        )
 
     def browse_google_credentials(self, connect_after_install: bool = False):
         """Pick and install a Google OAuth client JSON file."""
@@ -3368,9 +2985,7 @@ class SettingsDialog:
         """Paste the OAuth client JSON and optionally continue into browser auth."""
         paste_win = tk.Toplevel(self.dialog)
         paste_win.title("Paste Google OAuth JSON")
-        paste_win.geometry("640x460")
         paste_win.transient(self.dialog)
-        paste_win.grab_set()
 
         header = ttk.Frame(paste_win, padding="10")
         header.pack(fill=tk.X)
@@ -3381,7 +2996,7 @@ class SettingsDialog:
                 "If you do not have one yet, click Open Google Cloud, create a Desktop "
                 "app OAuth client, then paste the JSON below."
             ),
-            wraplength=600,
+            wraplength=380,
             justify=tk.LEFT,
         ).pack(anchor=tk.W)
 
@@ -3400,7 +3015,7 @@ class SettingsDialog:
             ),
         ).pack(side=tk.LEFT)
 
-        text = tk.Text(paste_win, wrap=tk.NONE)
+        text = tk.Text(paste_win, wrap=tk.NONE, width=52, height=9, undo=True)
         text.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         button_frame = ttk.Frame(paste_win)
@@ -3409,22 +3024,20 @@ class SettingsDialog:
         def do_install(continue_to_connect: bool = False):
             content = text.get("1.0", tk.END).strip()
             if not content:
-                messagebox.showerror("Paste credentials", "No content provided.")
+                messagebox.showerror(
+                    "Paste credentials",
+                    "Paste your OAuth JSON first.",
+                    parent=paste_win,
+                )
                 return
             try:
-                if self.google_integration:
-                    target = self.google_integration.install_credentials_content(
-                        content
+                if self.google_integration is None:
+                    raise ValueError(
+                        "Google Tasks is unavailable on this installation."
                     )
-                else:
-                    target = Path(self.google_credentials_path.get()).expanduser()
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_text(content, encoding="utf-8")
+                target = self.google_integration.install_credentials_content(content)
                 self.google_credentials_path.set(str(target))
                 self.refresh_google_status()
-                messagebox.showinfo(
-                    "Paste credentials", f"Credentials saved to {target}"
-                )
                 paste_win.destroy()
                 if continue_to_connect or connect_after_install:
                     self.dialog.after(0, self.connect_google_tasks)
@@ -3444,6 +3057,18 @@ class SettingsDialog:
         ttk.Button(button_frame, text="Cancel", command=paste_win.destroy).pack(
             side=tk.LEFT, padx=5
         )
+        paste_win.bind("<Escape>", lambda e: paste_win.destroy())
+        paste_win.bind(
+            "<Destroy>",
+            lambda e: (
+                self.dialog.grab_set()
+                if e.widget is paste_win and self.dialog.winfo_viewable()
+                else None
+            ),
+        )
+        place_dialog(paste_win, self.dialog)
+        paste_win.grab_set()
+        text.focus_set()
 
     def _current_google_task_list_id(self) -> str:
         """Return the selected Google task list id."""
@@ -3475,7 +3100,7 @@ class SettingsDialog:
         elif status.get("last_error"):
             self.google_status_var.set(status["last_error"])
         elif status["connected"]:
-            self.google_status_var.set("Connected. Google Tasks sync is ready.")
+            self.google_status_var.set("Connected on this device.")
         elif status["has_credentials_file"]:
             self.google_status_var.set(
                 "OAuth client file found. Click Connect Google Tasks to sign in "
@@ -3483,47 +3108,65 @@ class SettingsDialog:
             )
         else:
             self.google_status_var.set(
-                "Not connected. Click Connect Google Tasks to start the one-time "
-                "setup, save your OAuth JSON, and open the browser sign-in flow."
+                "Connect your Google account to sync tasks on this device."
             )
+
+    def _account_action(self, message, operation, finished):
+        """Keep explicit account requests off Tk's event loop, including browser sign-in."""
+        root = self.dialog.master
+        if getattr(root, "_tempo_account_busy", False):
+            self.google_status_var.set("Another account request is in progress.")
+            return
+        root._tempo_account_busy = True
+        self.google_status_var.set(message)
+
+        def receive(value, error):
+            root._tempo_account_busy = False
+            if self.dialog.winfo_exists():
+                if error:
+                    self.google_status_var.set(error)
+                else:
+                    finished(value)
+
+        def work():
+            try:
+                value, error = operation(), None
+            except Exception as exc:
+                value, error = None, str(exc)
+            try:
+                root.after(0, receive, value, error)
+            except (tk.TclError, RuntimeError):
+                pass  # The application closed during the account request.
+
+        threading.Thread(target=work, daemon=True).start()
 
     def refresh_google_task_lists(self):
-        """Load task lists for the connected account and refresh the combobox."""
-        saved_task_list_id = self.config.get(
-            "google_task_list_id", DEFAULT_TASK_LIST_ID
-        )
-        options = {
-            self._task_list_display(
-                "Primary task list", DEFAULT_TASK_LIST_ID
-            ): DEFAULT_TASK_LIST_ID
-        }
-
         if self.google_integration and self.google_integration.is_enabled():
-            for task_list in self.google_integration.get_task_lists():
-                display = self._task_list_display(
-                    task_list["title"], task_list["id"], options
-                )
-                options[display] = task_list["id"]
-            self.refresh_google_status()
-        elif saved_task_list_id != DEFAULT_TASK_LIST_ID:
-            options[
-                self._task_list_display("Saved task list", saved_task_list_id, options)
-            ] = saved_task_list_id
-
-        self.google_task_list_lookup = options
-        values = list(options.keys())
-        if self.google_task_list_combo:
-            self.google_task_list_combo["values"] = values
-            self.google_task_list_combo.config(
-                state="readonly" if values else "disabled"
+            self._account_action(
+                "Loading task lists…",
+                self.google_integration.get_task_lists,
+                self._display_task_lists,
             )
-
-        for display, task_list_id in options.items():
-            if task_list_id == saved_task_list_id:
-                self.google_task_list_var.set(display)
-                break
         else:
-            self.google_task_list_var.set(values[0])
+            self._display_task_lists([])
+
+    def _display_task_lists(self, lists):
+        selected = self._current_google_task_list_id()
+        options = {"Primary task list": DEFAULT_TASK_LIST_ID}
+        for item in lists:
+            options[self._task_list_display(item["title"], item["id"], options)] = item[
+                "id"
+            ]
+        if selected not in options.values():
+            options[self._task_list_display("Saved task list", selected, options)] = (
+                selected
+            )
+        self.google_task_list_lookup = options
+        self.google_task_list_combo.configure(values=list(options))
+        self.google_task_list_var.set(
+            next(name for name, value in options.items() if value == selected)
+        )
+        self.refresh_google_status()
 
     def connect_google_tasks(self):
         """Connect Google Tasks and launch browser-based OAuth."""
@@ -3548,48 +3191,33 @@ class SettingsDialog:
             self.refresh_google_status()
             return
 
-        try:
-            connected = self.google_integration.connect(credentials_source)
-        except FileNotFoundError as exc:
-            messagebox.showwarning(
-                "Google Tasks",
-                f"{exc}\n\nPaste or browse your Google OAuth JSON to finish setup.",
+        def connected(ok):
+            if not ok:
+                self.google_status_var.set(
+                    self.google_integration.last_error
+                    or "Couldn’t connect to Google Tasks. Try again."
+                )
+                return
+            self.google_credentials_path.set(
+                str(self.google_integration.credentials_file)
             )
-            self.refresh_google_status()
-            return
-        except RuntimeError as exc:
-            messagebox.showerror("Google Tasks", str(exc))
-            self.refresh_google_status()
-            return
-        except Exception as exc:
-            messagebox.showerror(
-                "Google Tasks",
-                f"Failed to connect Google Tasks:\n{exc}",
-            )
-            self.refresh_google_status()
-            return
+            self._sync_task_manager()
+            self._sync_google_tasks_after_connect()
+            self.refresh_google_task_lists()
 
-        if not connected:
-            messagebox.showerror(
-                "Google Tasks",
-                "Google Tasks could not be connected.",
-            )
-            self.refresh_google_status()
-            return
-
-        self.google_credentials_path.set(str(self.google_integration.credentials_file))
-        self.refresh_google_status()
-        self.refresh_google_task_lists()
-        self._sync_task_manager()
-        self._sync_google_tasks_after_connect()
-        messagebox.showinfo(
-            "Google Tasks",
-            "Google Tasks connected. The app will keep the token locally and "
-            "start syncing your tasks automatically.",
+        self._account_action(
+            "Finish signing in through your browser…",
+            lambda: self.google_integration.connect(credentials_source),
+            connected,
         )
 
     def disconnect_google_tasks(self):
         """Remove the saved Google token from this device."""
+        if getattr(self.dialog.master, "_tempo_account_busy", False):
+            self.google_status_var.set(
+                "Wait for the current account request to finish."
+            )
+            return
         if not self.google_integration:
             messagebox.showerror(
                 "Google Tasks", "Google Tasks integration is unavailable."
@@ -3608,56 +3236,50 @@ class SettingsDialog:
         self.refresh_google_status()
         self.refresh_google_task_lists()
         self._sync_task_manager()
-        messagebox.showinfo(
-            "Google Tasks",
-            "Google Tasks disconnected on this device.",
-        )
 
     def save_application_settings(self):
-        """Save all settings to config file"""
-        try:
-            # Timer settings
-            self.config.set("work_mins", int(self.work_mins.get()))
-            self.config.set("short_break_mins", int(self.short_break_mins.get()))
-            self.config.set("long_break_mins", int(self.long_break_mins.get()))
-            self.config.set("long_break_interval", int(self.long_break_interval.get()))
-
-            # Music settings
-            self.config.set("mpv_executable", self.mpv_executable.get())
-            default = self.default_playlist.get().strip()
-            if default != self.config.get("classical_music_default_playlist"):
-                self.config.set("classical_music_default_playlist", default)
-                self.config.set("classical_music_selected_playlist", "")
-            self.config.set("classical_music_playlist_dir", self.music_directory.get())
-
-            # Notification settings
-            self.config.set("notify", self.notify.get())
-            self.config.set("desktop_notifications", self.desktop_notifications.get())
-
-            # Theme settings
-            self.config.set("dark_theme", self.dark_theme.get())
-            self.config.set("accent_color", self.accent_color.get())
-            self.config.set("google_task_list_id", self._current_google_task_list_id())
-
-            if self.config.save_config():
-                self._sync_task_manager()
-                if self.google_integration and self.google_integration.is_enabled():
-                    self._sync_google_tasks_after_connect()
-                messagebox.showinfo(
-                    "Settings Saved",
-                    "Settings saved successfully.",
-                )
-                self.result = True
-                self.dialog.destroy()
-            else:
-                messagebox.showerror("Error", "Failed to save settings.")
-
-        except ValueError:
-            messagebox.showerror(
-                "Invalid Input", "Please enter valid numbers for durations."
+        changes = {}
+        for key, (label, value, field) in self.timer_fields.items():
+            try:
+                changes[key] = int(value.get())
+                if changes[key] < 1:
+                    raise ValueError
+            except ValueError:
+                self.notice.configure(text=f"{label} needs a positive whole number.")
+                self.notebook.select(self.timer_tab)
+                field.focus_set()
+                field.selection_range(0, "end")
+                return
+        changes.update(
+            {key: var.get().strip() for key, var in self.music_fields.items()}
+        )
+        if changes["classical_music_default_playlist"] != self.config.get(
+            "classical_music_default_playlist"
+        ):
+            changes["classical_music_selected_playlist"] = ""
+        changes.update(
+            notify=self.notify.get(),
+            desktop_notifications=self.desktop_notifications.get(),
+            dark_theme=self.dark_theme.get(),
+            gui_zoom=int(self.interface_size.get().rstrip("%")) / 100,
+            accent_color=self.accent_color.get(),
+            google_task_list_id=self._current_google_task_list_id(),
+        )
+        previous = {key: self.config.get(key) for key in changes}
+        for key, value in changes.items():
+            self.config.set(key, value)
+        if not self.config.save_config():
+            for key, value in previous.items():
+                self.config.set(key, value)
+            self.notice.configure(
+                text="Couldn’t save settings. Check that your settings folder is writable and try again."
             )
-        except Exception as e:
-            messagebox.showerror("Error", f"An error occurred: {e}")
+            return
+        if previous["google_task_list_id"] != changes["google_task_list_id"]:
+            self._sync_task_manager()
+            self._sync_google_tasks_after_connect()
+        self.result = True
+        self.dialog.destroy()
 
     def cancel(self):
         """Cancel settings changes"""
@@ -3674,122 +3296,51 @@ class WorkCompletionDialog:
         self.result = False
         self.selected_task_id = None
 
-        # Create dialog window
         self.dialog = tk.Toplevel(parent)
-        self.dialog.title("🎉 Work Session Complete!")
-        self.dialog.geometry("400x300")
-        self.dialog.resizable(True, True)
+        self.dialog.title("Focus complete")
         self.dialog.transient(parent)
-        self.dialog.grab_set()
-
-        # Center the dialog
-        self.center_dialog(parent)
-
-        # Create widgets
-        self.create_widgets()
-
-    def center_dialog(self, parent):
-        """Center the dialog on the parent window"""
-        self.dialog.update_idletasks()
-
-        # Get parent position and size
-        parent_x = parent.winfo_rootx()
-        parent_y = parent.winfo_rooty()
-        parent_width = parent.winfo_width()
-        parent_height = parent.winfo_height()
-
-        # Calculate dialog position
-        dialog_width = 400
-        dialog_height = 300
-        x = parent_x + (parent_width - dialog_width) // 2
-        y = parent_y + (parent_height - dialog_height) // 2
-
-        self.dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
-
-    def create_widgets(self):
-        """Create dialog widgets"""
-        # Main frame
-        main_frame = ttk.Frame(self.dialog, padding="15")
-        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
-
-        # Configure grid weights
-        self.dialog.grid_rowconfigure(0, weight=1)
-        self.dialog.grid_columnconfigure(0, weight=1)
-        main_frame.grid_rowconfigure(2, weight=1)
-        main_frame.grid_columnconfigure(0, weight=1)
-
-        # Title
-        title_label = ttk.Label(
-            main_frame,
-            text=f"🎉 Completed {self.duration}-minute work session!",
-            font=("Arial", 13, "bold"),
-        )
-        title_label.grid(row=0, column=0, pady=(0, 10), sticky=tk.W)
-
-        # Instruction
-        instruction_label = ttk.Label(
-            main_frame, text="Which task were you working on?", font=("Arial", 11)
-        )
-        instruction_label.grid(row=1, column=0, pady=(0, 15), sticky=tk.W)
-
-        # Tasks frame with scrolling
-        tasks_frame = ttk.LabelFrame(main_frame, text="Select Task", padding="5")
-        tasks_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 15))
-        tasks_frame.grid_columnconfigure(0, weight=1)
-
-        # Task selection variable
-        self.task_var = tk.StringVar()
-
-        # Create radio buttons for each task
-        for i, task in enumerate(self.tasks):
-            task_text = (
-                f"🍅 {task.title} ({task.pomodoros_completed}/{task.pomodoros_planned})"
+        frame = ttk.Frame(self.dialog, padding=18)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(
+            frame, text=f"{duration} minutes of focus", font=("Arial", 16, "bold")
+        ).pack(anchor="w")
+        if tasks:
+            ttk.Label(frame, text="Credit this session to a task").pack(
+                anchor="w", pady=(10, 4)
             )
-            radio = ttk.Radiobutton(
-                tasks_frame, text=task_text, variable=self.task_var, value=task.id
+            self.task_list = ttk.Combobox(
+                frame,
+                state="readonly",
+                width=32,
+                values=[
+                    f"{t.title} ({t.pomodoros_completed}/{t.pomodoros_planned})"
+                    for t in tasks
+                ],
             )
-            radio.grid(row=i, column=0, sticky=tk.W, pady=2)
-
-            # Select first task by default
-            if i == 0:
-                self.task_var.set(task.id)
-
-        # If no tasks, show message
-        if not self.tasks:
-            no_tasks_label = ttk.Label(
-                tasks_frame,
-                text="No tasks available. Session recorded without task tracking.",
-                font=("Arial", 10, "italic"),
-            )
-            no_tasks_label.grid(row=0, column=0, pady=10)
-
-        # Button frame
-        button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
-
-        # Buttons
-        if self.tasks:
-            save_button = ttk.Button(
-                button_frame, text="✅ Add to Task", command=self.add_to_task
-            )
-            save_button.grid(row=0, column=0, padx=(0, 5))
-
-        skip_button = ttk.Button(
-            button_frame, text="⏭️ Skip Task Tracking", command=self.skip_tracking
-        )
-        skip_button.grid(row=0, column=1 if self.tasks else 0)
-
-        # Bind Enter key
+            self.task_list.pack(fill="x")
+            self.task_list.current(0)
+        buttons = ttk.Frame(frame)
+        buttons.pack(fill="x", pady=(14, 0))
+        if tasks:
+            ttk.Button(
+                buttons,
+                text="Add to task",
+                style="Modern.TButton",
+                command=self.add_to_task,
+            ).pack(side="right")
+        ttk.Button(
+            buttons, text="Skip" if tasks else "Done", command=self.skip_tracking
+        ).pack(side="right", padx=4)
         self.dialog.bind(
-            "<Return>",
-            lambda e: self.add_to_task() if self.tasks else self.skip_tracking(),
+            "<Return>", lambda e: self.add_to_task() if tasks else self.skip_tracking()
         )
         self.dialog.bind("<Escape>", lambda e: self.skip_tracking())
+        place_dialog(self.dialog, parent)
+        self.dialog.grab_set()
 
     def add_to_task(self):
-        """Add the completed session to the selected task"""
-        if self.tasks and self.task_var.get():
-            self.selected_task_id = self.task_var.get()
+        if self.tasks:
+            self.selected_task_id = self.tasks[self.task_list.current()].id
             self.result = True
         self.dialog.destroy()
 
@@ -3809,17 +3360,7 @@ class FocusGUI:
             self.root = tk.Tk()
             self.root.withdraw()
             self.config = ConfigManager()
-            self.ui_bg = "#171c22" if self.config.get("dark_theme", True) else "#f7f8fa"
-            self.ui_fg = "#edf1f5" if self.config.get("dark_theme", True) else "#17212b"
-            self.ui_card = (
-                "#222830" if self.config.get("dark_theme", True) else "#ffffff"
-            )
-            dark = self.config.get("dark_theme", True)
-            self.ui_muted = "#a4afbc" if dark else "#52616c"
-            self.ui_selected = "#283e3a" if dark else "#d6ebe3"
-            self.ui_accent = self.config.get("accent_color") or "#00ff00"
-            if self.ui_accent == "#00ff00":
-                self.ui_accent = "#94d8c1" if dark else "#176f58"
+            self.set_palette()
             self.music = MusicController(self.config)
             self.notifications = NotificationManager(self.config)
             self.session_manager = SessionManager(self.config)
@@ -3891,11 +3432,12 @@ class FocusGUI:
             )
 
             self.setup_window()
+            # Give the scrollable task list a real viewport before measuring it.
+            self.load_window_dimensions()
             self.create_widgets()
             self.apply_theme()
             self.setup_keyboard_shortcuts()
             self._zoom_level = 1.0
-            self._zoom_fonts = {}
             self.set_zoom(
                 float(self.config.get("gui_zoom", 0.85)), save=False, resize=False
             )
@@ -4157,104 +3699,103 @@ class FocusGUI:
         header = ttk.Frame(self.main_frame)
         header.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 12))
         header.columnconfigure(0, weight=1)
-        self.title_label = ttk.Label(header, text="Tempo", font=("Arial", 16, "bold"))
+        self.title_label = ttk.Label(header, text="Tempo", font=("Arial", 20, "bold"))
         self.title_label.grid(row=0, column=0, sticky="w")
+        ttk.Button(header, text="Settings", width=7, command=self.show_settings).grid(
+            row=0, column=1, padx=(4, 5)
+        )
         more = ttk.Menubutton(header, text="More", width=5)
+        more.grid(row=0, column=2)
         menu = tk.Menu(more, tearoff=False)
-        menu.add_command(label="Settings…", command=self.show_settings)
-        menu.add_command(label="Statistics", command=self.show_statistics)
+        menu.add_command(label="Statistics…", command=self.show_statistics)
+        menu.add_command(label="Tasks window…", command=self.open_task_window)
         menu.add_command(
             label="Keyboard shortcuts…", command=self.show_keyboard_shortcuts
         )
         menu.add_separator()
         menu.add_command(label="Zoom in", command=lambda: self.change_zoom(0.1))
         menu.add_command(label="Zoom out", command=lambda: self.change_zoom(-0.1))
-        menu.add_command(label="Reset Size", command=lambda: self.set_zoom(1.0))
+        menu.add_command(label="Reset zoom", command=lambda: self.set_zoom(1.0))
         more.configure(menu=menu)
-        zoom_controls = ttk.Frame(header)
-        zoom_controls.grid(row=0, column=1, padx=4)
-        ttk.Button(
-            zoom_controls, text="−", width=2, command=lambda: self.change_zoom(-0.1)
-        ).pack(side="left")
-        self.zoom_label = ttk.Label(
-            zoom_controls, text="100%", width=5, anchor="center"
-        )
-        self.zoom_label.pack(side="left")
-        ttk.Button(
-            zoom_controls, text="+", width=2, command=lambda: self.change_zoom(0.1)
-        ).pack(side="left")
-        more.grid(row=0, column=2)
 
-        clock = tk.Frame(self.main_frame, bg=self.ui_card, padx=16, pady=10)
-        clock.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 8))
+        clock = tk.Frame(self.main_frame, bg=self.ui_card, padx=14, pady=14)
+        clock.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(0, 12))
         clock.columnconfigure(0, weight=1)
+        heading = tk.Frame(clock, bg=self.ui_card)
+        heading.grid(row=0, column=0, sticky="ew")
+        heading.columnconfigure(0, weight=1)
         self.phase_label = tk.Label(
-            clock,
+            heading,
             text="Ready to focus",
             bg=self.ui_card,
             fg=self.ui_muted,
-            font=("Arial", 11),
+            font=("Arial", 12, "bold"),
         )
-        self.phase_label.grid(row=0, column=0)
+        self.phase_label.grid(row=0, column=0, sticky="w")
+        self.custom_button = ttk.Button(
+            heading, text="Custom…", width=7, command=self.start_custom_session
+        )
+        self.custom_button.grid(row=0, column=1)
         self.time_label = tk.Label(
             clock,
             text="00:00",
-            font=("Arial", 46, "bold"),
+            font=("Arial", 58, "bold"),
             bg=self.ui_card,
             fg=self.ui_fg,
         )
-        self.time_label.grid(row=1, column=0)
+        self.time_label.grid(row=1, column=0, pady=(4, 3))
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(
             clock, variable=self.progress_var, maximum=100
         )
-        self.progress_bar.grid(row=2, column=0, sticky="ew", pady=(3, 0))
+        self.progress_bar.grid(row=2, column=0, sticky="ew", pady=(0, 12))
 
-        self.session_frame = ttk.Frame(self.main_frame)
-        self.session_frame.grid(row=3, column=0, columnspan=3, sticky="ew")
+        self.session_frame = tk.Frame(clock, bg=self.ui_card)
+        self.session_frame.grid(row=3, column=0, sticky="ew")
         self.session_frame.columnconfigure((0, 1), weight=1, uniform="session")
         self.work_button = ttk.Button(
             self.session_frame,
-            text=f"Start focus · {self.config.get('work_mins')} min",
+            text="Start focus",
             command=lambda: self.start_session(SessionType.WORK),
             style="Modern.TButton",
         )
+        self.work_button.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 5))
         self.short_break_button = ttk.Button(
             self.session_frame,
             text=f"Short break · {self.config.get('short_break_mins')} min",
             command=lambda: self.start_session(SessionType.SHORT_BREAK),
+            style="Secondary.TButton",
+            width=1,
         )
+        self.short_break_button.grid(row=1, column=0, sticky="ew", padx=(0, 2))
         self.long_break_button = ttk.Button(
             self.session_frame,
             text=f"Long break · {self.config.get('long_break_mins')} min",
             command=lambda: self.start_session(SessionType.LONG_BREAK),
+            style="Secondary.TButton",
+            width=1,
         )
-        self.custom_button = ttk.Button(
-            self.session_frame, text="Custom…", command=self.start_custom_session
-        )
-        for index, button in enumerate(
-            (
-                self.work_button,
-                self.short_break_button,
-                self.long_break_button,
-                self.custom_button,
-            )
-        ):
-            button.grid(row=index // 2, column=index % 2, sticky="nsew", padx=3, pady=3)
+        self.long_break_button.grid(row=1, column=1, sticky="ew", padx=(2, 0))
 
-        self.control_frame = ttk.Frame(self.main_frame)
-        self.control_frame.grid(row=4, column=0, columnspan=3, pady=(6, 12))
+        self.control_frame = tk.Frame(clock, bg=self.ui_card)
+        self.control_frame.grid(row=3, column=0, sticky="ew")
+        self.control_frame.columnconfigure((0, 1), weight=1, uniform="control")
         self.pause_button = ttk.Button(
             self.control_frame,
             text="Pause",
             command=self.toggle_pause,
             state="disabled",
+            style="Modern.TButton",
         )
-        self.pause_button.grid(row=0, column=0, padx=4)
+        self.pause_button.grid(row=0, column=0, sticky="ew", padx=(0, 3))
         self.stop_button = ttk.Button(
-            self.control_frame, text="Stop", command=self.stop_session, state="disabled"
+            self.control_frame,
+            text="Stop",
+            command=self.stop_session,
+            state="disabled",
+            style="Secondary.TButton",
         )
-        self.stop_button.grid(row=0, column=1, padx=4)
+        self.stop_button.grid(row=0, column=1, sticky="ew", padx=(3, 0))
         self.control_frame.grid_remove()
         self.status_frame = ttk.Frame(self.main_frame)
         self.status_frame.grid(row=5, column=0, columnspan=3, sticky="ew")
@@ -4298,13 +3839,19 @@ class FocusGUI:
 
     def add_music_link(self):
         # Tk 9 removed MacWindowStyle, still called by Python 3.12 simpledialog.
-        dialog = tk.Toplevel(self.root)
+        if (
+            getattr(self, "_music_source_window", None)
+            and self._music_source_window.winfo_exists()
+        ):
+            self._music_source_window.lift()
+            return
+        dialog = self._music_source_window = tk.Toplevel(self.root)
         dialog.title("Change music")
         dialog.transient(self.root)
         frame = ttk.Frame(dialog, padding=16)
         frame.pack(fill="both", expand=True)
         ttk.Label(frame, text="Song, playlist, or radio link").pack(anchor="w")
-        entry = ttk.Entry(frame, width=55)
+        entry = ttk.Entry(frame, width=40)
         entry.pack(fill="x", pady=12)
 
         def save(event=None):
@@ -4331,9 +3878,27 @@ class FocusGUI:
         buttons = ttk.Frame(frame)
         buttons.pack(fill="x")
         ttk.Button(buttons, text="Open file…", command=open_file).pack(side="left")
-        ttk.Button(buttons, text="Play link", command=save).pack(side="right")
+        play = ttk.Button(
+            buttons,
+            text="Play link",
+            command=save,
+            style="Modern.TButton",
+            state="disabled",
+        )
+        play.pack(side="right")
+        link = tk.StringVar(dialog)
+        entry.configure(textvariable=link)
+        link.trace_add(
+            "write",
+            lambda *args: play.configure(
+                state="normal" if link.get().strip() else "disabled"
+            ),
+        )
+        # Keep the variable alive for the lifetime of the entry.
+        entry.link = link
         entry.bind("<Return>", save)
         dialog.bind("<Escape>", lambda event: dialog.destroy())
+        place_dialog(dialog, self.root)
         entry.focus_set()
 
     def _save_music_link(self, link):
@@ -4442,7 +4007,7 @@ class FocusGUI:
         )
         self.task_stats_label.grid(row=0, column=1, sticky=tk.W)
         self.keyboard_mode_label = ttk.Button(
-            header_frame, text="NORMAL · ? keys", command=self.show_keyboard_shortcuts
+            header_frame, text="Shortcuts", command=self.show_keyboard_shortcuts
         )
         self.keyboard_mode_label.grid(row=0, column=2, sticky=tk.E)
 
@@ -4469,7 +4034,7 @@ class FocusGUI:
             relief="flat",
             borderwidth=0,
             highlightthickness=1,
-            highlightbackground="#3b4652",
+            highlightbackground=self.ui_selected,
             highlightcolor=self.ui_accent,
         )
         self.task_entry.grid(
@@ -4478,7 +4043,7 @@ class FocusGUI:
 
         # Placeholder functionality
         self.placeholder_text = "Add a task…"
-        self.placeholder_color = "#667085"  # Bright green for placeholder
+        self.placeholder_color = self.ui_muted
         self.normal_color = self.ui_fg
         self.typing_color = self.ui_fg
         self.showing_placeholder = False
@@ -4492,7 +4057,7 @@ class FocusGUI:
 
         # Compact pomodoro count with dynamic spacing
         self.pomodoro_var = tk.IntVar(value=1)
-        pomodoro_label = ttk.Label(self.add_task_frame, text="🍅")
+        pomodoro_label = ttk.Label(self.add_task_frame, text="Sessions")
         pomodoro_label.grid(
             row=0, column=1, padx=(scaling["button_padx"], scaling["small_pady"])
         )
@@ -4509,19 +4074,11 @@ class FocusGUI:
         # Compact save/cancel buttons with dynamic width and spacing
         save_button = ttk.Button(
             self.add_task_frame,
-            text="✓",
+            text="Add",
             command=self.save_new_task,
-            width=scaling["small_button_width"],
+            width=4,
         )
         save_button.grid(row=0, column=3, padx=(0, scaling["small_pady"]))
-
-        cancel_button = ttk.Button(
-            self.add_task_frame,
-            text="✗",
-            command=self.cancel_add_task,
-            width=scaling["small_button_width"],
-        )
-        cancel_button.grid(row=0, column=4)
 
         # Always show add task widgets and initialize with placeholder
         self.show_placeholder()
@@ -4583,10 +4140,11 @@ class FocusGUI:
 
     def _update_task_scrollbar(self, first, last):
         self.tasks_scrollbar.set(first, last)
-        if float(first) <= 0 and float(last) >= 1:
-            self.tasks_scrollbar.grid_remove()
-        else:
+        needed = float(first) > 0 or float(last) < 1
+        if needed and not self.tasks_scrollbar.winfo_manager():
             self.tasks_scrollbar.grid()
+        elif not needed and self.tasks_scrollbar.winfo_manager():
+            self.tasks_scrollbar.grid_remove()
 
     def _on_mousewheel(self, event):
         """Handle mouse wheel scrolling in tasks area"""
@@ -4634,7 +4192,9 @@ class FocusGUI:
             and task_text != self.placeholder_text
             and not self.showing_placeholder
         ):
-            pomodoros = self.pomodoro_var.get()
+            pomodoros = _planned_sessions(self.pomodoro_spinbox)
+            if pomodoros is None:
+                return
             self.task_manager.add_task(task_text, pomodoros_planned=pomodoros)
 
         # Always cancel/clear the add task interface
@@ -4672,7 +4232,7 @@ class FocusGUI:
         if stats["total"]:
             self.task_stats_label.grid()
             self.task_stats_label.configure(
-                text=f"{stats['completed']}/{stats['total']}  🍅{stats['total_pomodoros_completed']}/{stats['total_pomodoros_planned']}"
+                text=f"{stats['completed']}/{stats['total']} done"
             )
         else:
             self.task_stats_label.grid_remove()
@@ -4705,7 +4265,7 @@ class FocusGUI:
             pady=scaling["small_pady"],
             padx=scaling["small_pady"],
         )
-        task_row.grid_columnconfigure(2, weight=1)  # Title column expands
+        task_row.grid_columnconfigure(1, weight=1)  # Title column expands
 
         # Track this row for vim selection (index matches tasks list)
         self.task_rows.append((task, task_row))
@@ -4718,30 +4278,6 @@ class FocusGUI:
         except Exception:
             pass
 
-        sync_state = self.task_manager.get_sync_status(task.id)
-        sync_icon_map = {
-            "synced": "☁",
-            "pending": "…",
-            "error": "⚠",
-            "disabled": "⏻",
-            "local": "·",
-        }
-        sync_color_map = {
-            "synced": "#00bfff",
-            "pending": "#ffaa00",
-            "error": "#ff5555",
-            "disabled": "#666666",
-            "local": "#666666",
-        }
-        sync_label = tk.Label(
-            task_row,
-            text=sync_icon_map.get(sync_state, "·"),
-            font=("Arial", self.task_font_sizes["pomodoro"]),
-            fg=sync_color_map.get(sync_state, "#666666"),
-            bg=sel_bg,
-        )
-        sync_label.grid(row=0, column=0, padx=(0, scaling["small_pady"]))
-
         # Completion checkbox
         completed_var = tk.BooleanVar(value=task.completed)
         check = ttk.Checkbutton(
@@ -4749,13 +4285,12 @@ class FocusGUI:
             variable=completed_var,
             command=lambda: self.toggle_task(task, completed_var),
         )
-        check.grid(row=0, column=1, padx=(0, scaling["button_padx"]))
+        check.grid(row=0, column=0, padx=(0, scaling["button_padx"]))
 
         # Task title (more compact)
         title_text = task.title
         if task.completed:
-            title_text = f"✅ {title_text}"
-            text_color = "#666666"
+            text_color = self.ui_muted
         else:
             text_color = self.ui_fg
 
@@ -4768,7 +4303,7 @@ class FocusGUI:
             anchor="w",
         )
         title_label.grid(
-            row=0, column=2, sticky=(tk.W, tk.E), padx=(0, scaling["small_pady"])
+            row=0, column=1, sticky=(tk.W, tk.E), padx=(0, scaling["small_pady"])
         )
         title_label.bind(
             "<Double-1>", lambda event, task=task: self.edit_task_title(event, task)
@@ -4780,7 +4315,7 @@ class FocusGUI:
 
         # Compact pomodoro progress
         pomodoro_text = f"{task.pomodoros_completed}/{task.pomodoros_planned}"
-        pomodoro_color = "#80b9a6" if task.pomodoros_completed > 0 else "#666666"
+        pomodoro_color = self.ui_accent if task.pomodoros_completed else self.ui_muted
 
         pomodoro_label = tk.Label(
             task_row,
@@ -4790,7 +4325,7 @@ class FocusGUI:
             bg=sel_bg,
         )
         pomodoro_label.grid(
-            row=0, column=3, padx=(scaling["small_pady"], scaling["small_pady"])
+            row=0, column=2, padx=(scaling["small_pady"], scaling["small_pady"])
         )
 
         # Compact pomodoro buttons (for incomplete tasks) with dynamic width
@@ -4805,7 +4340,7 @@ class FocusGUI:
                 )
                 decrease_pomodoro_btn.grid(
                     row=0,
-                    column=4,
+                    column=3,
                     padx=(scaling["small_pady"], scaling["small_pady"] // 2),
                 )
 
@@ -4818,10 +4353,10 @@ class FocusGUI:
                 )
                 add_pomodoro_btn.grid(
                     row=0,
-                    column=5,
+                    column=4,
                     padx=(scaling["small_pady"] // 2, scaling["small_pady"]),
                 )
-                delete_column = 6
+                delete_column = 5
             else:
                 # Only add button when no completed pomodoros
                 add_pomodoro_btn = ttk.Button(
@@ -4831,11 +4366,11 @@ class FocusGUI:
                     width=scaling["small_button_width"],
                 )
                 add_pomodoro_btn.grid(
-                    row=0, column=4, padx=(scaling["small_pady"], scaling["small_pady"])
+                    row=0, column=3, padx=(scaling["small_pady"], scaling["small_pady"])
                 )
-                delete_column = 5
+                delete_column = 4
         else:
-            delete_column = 4
+            delete_column = 3
 
         # Compact delete button with dynamic width
         delete_btn = ttk.Button(
@@ -5064,121 +4599,66 @@ class FocusGUI:
         self.task_entry.configure(foreground=self.normal_color)
         self.showing_placeholder = False
 
+    def set_palette(self):
+        self.colors = palette(self.config, self.root)
+        for role, color in self.colors.items():
+            setattr(self, f"ui_{role}", color)
+
+    def refresh_palette(self):
+        old = self.colors
+        self.set_palette()
+        if self.colors == old:
+            return
+        # ttk styles update together. Classic Tk controls store their own colors.
+        replacements = {}
+        for role, color in old.items():
+            replacements.setdefault(color, self.colors[role])
+        pending = [self.root]
+        while pending:
+            widget = pending.pop()
+            pending.extend(widget.winfo_children())
+            if isinstance(widget, ttk.Widget):
+                continue
+            for option in (
+                "background",
+                "foreground",
+                "highlightbackground",
+                "highlightcolor",
+                "insertbackground",
+                "activebackground",
+                "activeforeground",
+                "selectcolor",
+            ):
+                if option in widget.keys():
+                    replacement = replacements.get(str(widget.cget(option)))
+                    if replacement:
+                        widget.configure(**{option: replacement})
+        self.music_panel.bg, self.music_panel.fg = self.ui_card, self.ui_fg
+        self.music_panel.muted, self.music_panel.accent = self.ui_muted, self.ui_accent
+        self.normal_color = self.typing_color = self.ui_fg
+        self.placeholder_color = self.ui_muted
+        self.music_panel.status_label.configure(fg=self.ui_accent)
+        self.task_stats_label.configure(fg=self.ui_accent)
+        self.task_entry.configure(highlightcolor=self.ui_accent)
+        self.apply_theme()
+        scale_interface(self.root, self._zoom_level)
+
     def apply_theme(self):
-        style = ttk.Style(self.root)
-        style.theme_use("clam")
-        bg, fg, card = self.ui_bg, self.ui_fg, self.ui_card
-        accent, muted, hover = self.ui_accent, self.ui_muted, self.ui_selected
-        self.root.configure(bg=bg)
-        style.configure(".", background=bg, foreground=fg)
-        style.configure("TFrame", background=bg)
-        style.configure("TLabel", background=bg, foreground=fg, font=("Arial", 11))
-        for name in ("TButton", "TMenubutton"):
-            style.configure(
-                name,
-                background=card,
-                foreground=fg,
-                borderwidth=0,
-                padding=(8, 5),
-                arrowcolor=muted,
-            )
-            style.map(
-                name,
-                background=[("pressed", hover), ("active", hover)],
-                foreground=[("disabled", muted)],
-            )
-        for name in ("Modern.TButton", "MusicPlay.TButton"):
-            style.configure(name, background=accent, foreground=bg, padding=(10, 6))
-            style.map(
-                name,
-                background=[("active", hover)],
-                foreground=[("active", fg), ("disabled", muted)],
-            )
-        for name in ("TEntry", "TSpinbox", "TCombobox"):
-            style.configure(
-                name, fieldbackground=card, foreground=fg, insertcolor=fg, arrowcolor=fg
-            )
-        style.map(
-            "TCombobox",
-            fieldbackground=[("readonly", card)],
-            foreground=[("readonly", fg)],
-        )
-        style.configure("TScale", background=card, troughcolor=hover)
-        style.configure(
-            "Horizontal.TProgressbar",
-            background=accent,
-            troughcolor=hover,
-            bordercolor=hover,
-            lightcolor=accent,
-            darkcolor=accent,
-            borderwidth=0,
-        )
+        apply_styles(self.root, self.colors)
         self.progress_bar.configure(length=1)
-        style.configure("Horizontal.TProgressbar", arrowsize=4)
-        style.configure(
-            "TScrollbar",
-            background=card,
-            troughcolor=bg,
-            bordercolor=bg,
-            arrowcolor=muted,
-            arrowsize=9,
-        )
-        style.configure("Current.TFrame", background=card)
 
     def change_zoom(self, delta):
         self.set_zoom(self._zoom_level + delta)
 
     def set_zoom(self, level, save=True, resize=True):
         """Scale actual widget fonts and controls, keeping the window resizable."""
-        from tkinter import font as tkfont
-
         level = round(max(0.65, min(1.5, level)), 2)
         previous = self._zoom_level
+        width, height = self.root.winfo_width(), self.root.winfo_height()
         self._zoom_level = level
-        widgets = [self.root]
-        font_cache = {}
-        live_widgets = set()
-        while widgets:
-            widget = widgets.pop()
-            widgets.extend(widget.winfo_children())
-            if "font" not in widget.keys():
-                continue
-            try:
-                key = str(widget)
-                live_widgets.add(key)
-                if key not in self._zoom_fonts:
-                    self._zoom_fonts[key] = tkfont.Font(
-                        root=self.root, font=widget.cget("font")
-                    ).actual()
-                original = self._zoom_fonts[key].copy()
-                size = original["size"]
-                original["size"] = (1 if size >= 0 else -1) * max(
-                    6, round(abs(size) * level)
-                )
-                signature = tuple(sorted(original.items()))
-                if signature not in font_cache:
-                    font_cache[signature] = tkfont.Font(root=self.root, **original)
-                font = font_cache[signature]
-                widget.configure(font=font)
-                widget._focus_zoom_font = font
-            except tk.TclError:
-                continue
-        self._zoom_font_cache = font_cache
-        self._zoom_fonts = {
-            key: value for key, value in self._zoom_fonts.items() if key in live_widgets
-        }
-        style = ttk.Style(self.root)
-        for name in ("TButton", "TEntry", "TCombobox", "TMenubutton", "TSpinbox"):
-            style.configure(name, font=("Arial", max(7, round(11 * level))))
-        style.configure(
-            "Modern.TButton",
-            font=("Arial", max(7, round(11 * level)), "bold"),
-            padding=(max(3, round(8 * level)), max(3, round(5 * level))),
-        )
-        self.main_frame.configure(padding=max(6, round(18 * level)))
-        self.music_panel.configure(
-            padx=max(6, round(12 * level)), pady=max(5, round(10 * level))
-        )
+        scale_interface(self.root, level)
+        if getattr(self, "task_window", None) and self.task_window.winfo_exists():
+            self.task_window.minsize(round(400 * level), round(300 * level))
         self.root.update_idletasks()
         task_height = (
             self.task_frame.winfo_reqheight() if hasattr(self, "task_frame") else 0
@@ -5190,15 +4670,10 @@ class FocusGUI:
         )
         self.root.update_idletasks()
         ratio = level / previous
-        width = min(
-            self.root.winfo_screenwidth(), round(self.root.winfo_width() * ratio)
-        )
-        height = min(
-            self.root.winfo_screenheight() - 60, round(self.root.winfo_height() * ratio)
-        )
+        width = min(self.root.winfo_screenwidth(), round(width * ratio))
+        height = min(self.root.winfo_screenheight() - 60, round(height * ratio))
         if resize:
             self.root.geometry(f"{width}x{height}")
-        self.zoom_label.configure(text=f"{round(level * 100)}%")
         if save:
             self.config.set("gui_zoom", level)
             self.config.save_config()
@@ -5224,7 +4699,7 @@ class FocusGUI:
             return
         if hasattr(self, "keyboard_mode_label"):
             self.keyboard_mode_label.configure(
-                text=("INSERT" if self.is_typing() else "NORMAL") + " · ? keys"
+                text="Editing" if self.is_typing() else "Shortcuts"
             )
 
     def _handle_app_key(self, event):
@@ -5327,7 +4802,7 @@ class FocusGUI:
             from types import SimpleNamespace
 
             task, frame = self.task_rows[self.selected_task_index]
-            labels = frame.grid_slaves(row=0, column=2)
+            labels = frame.grid_slaves(row=0, column=1)
             if labels:
                 self.edit_task_title(SimpleNamespace(widget=labels[0]), task)
 
@@ -5373,7 +4848,11 @@ class FocusGUI:
             text="Single-key commands work in Normal mode. Text fields keep standard editing keys.",
             wraplength=420,
         ).grid(row=len(shortcuts) + 1, column=0, columnspan=2, sticky="w", pady=(12, 0))
+        ttk.Button(frame, text="Done", command=window.destroy).grid(
+            row=len(shortcuts) + 2, columnspan=2, sticky="e", pady=(8, 0)
+        )
         window.bind("<Escape>", lambda e: window.destroy())
+        place_dialog(window, self.root)
 
     def shortcut_add_task(self):
         if not self.is_typing():
@@ -5518,22 +4997,24 @@ class FocusGUI:
 
         # Create new task window
         self.task_window = tk.Toplevel(self.root)
-        self.task_window.title("📝 Task Manager")
-        self.task_window.geometry("500x400")
-        self.task_window.resizable(True, True)
-        self.task_window.minsize(400, 300)  # Set minimum size
+        self.task_window.title("Today’s tasks")
+        self.task_window.minsize(
+            round(400 * self._zoom_level), round(300 * self._zoom_level)
+        )
 
         # Apply dark theme to the window
         self.task_window.configure(bg=self.ui_bg)
 
-        # Center window on screen
-        self.task_window.update_idletasks()
-        x = (self.task_window.winfo_screenwidth() // 2) - (500 // 2)
-        y = (self.task_window.winfo_screenheight() // 2) - (400 // 2)
-        self.task_window.geometry(f"500x400+{x}+{y}")
-
-        # Create native task management UI for the separate window
         self.create_separate_task_ui()
+        place_dialog(self.task_window, self.root)
+        self.task_window.bind(
+            "<Escape>",
+            lambda e: (
+                self.close_task_window()
+                if e.widget is not self.separate_entry
+                else None
+            ),
+        )
 
         # Bind window close to cleanup
         self.task_window.protocol("WM_DELETE_WINDOW", self.close_task_window)
@@ -5556,7 +5037,7 @@ class FocusGUI:
 
         # Title
         title_label = ttk.Label(
-            main_frame, text="📝 Task Manager", font=("Arial", 13, "bold")
+            main_frame, text="Today’s tasks", font=("Arial", 13, "bold")
         )
         title_label.grid(row=0, column=0, pady=(0, 10))
 
@@ -5591,7 +5072,7 @@ class FocusGUI:
         self.separate_stats_label = tk.Label(
             header_frame,
             text="No tasks yet",
-            font=("Arial", 5),
+            font=("Arial", 10),
             fg=self.ui_accent,
             bg=self.ui_bg,
         )
@@ -5600,7 +5081,7 @@ class FocusGUI:
         # Add button
         add_button = ttk.Button(
             header_frame,
-            text="➕ Add Task",
+            text="Add task",
             command=self.show_separate_add_entry,
             width=12,
         )
@@ -5616,12 +5097,14 @@ class FocusGUI:
         self.separate_entry = ttk.Entry(
             self.separate_add_frame,
             textvariable=self.separate_task_var,
-            font=("Arial", 7),
+            font=("Arial", 11),
         )
         self.separate_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
 
         self.separate_pomodoro_var = tk.IntVar(value=1)
-        ttk.Label(self.separate_add_frame, text="🍅").grid(row=0, column=1, padx=(0, 2))
+        ttk.Label(self.separate_add_frame, text="Sessions").grid(
+            row=0, column=1, padx=(0, 2)
+        )
 
         self.separate_spinbox = ttk.Spinbox(
             self.separate_add_frame,
@@ -5635,16 +5118,16 @@ class FocusGUI:
         # Buttons
         ttk.Button(
             self.separate_add_frame,
-            text="✓",
+            text="Add",
             command=self.save_separate_task,
             width=3,
         ).grid(row=0, column=3, padx=(0, 2))
 
         ttk.Button(
             self.separate_add_frame,
-            text="✗",
+            text="Cancel",
             command=self.cancel_separate_add,
-            width=3,
+            width=6,
         ).grid(row=0, column=4)
 
         # Bind enter key
@@ -5671,7 +5154,9 @@ class FocusGUI:
         """Save task from separate window"""
         task_text = self.separate_task_var.get().strip()
         if task_text:
-            pomodoros = self.separate_pomodoro_var.get()
+            pomodoros = _planned_sessions(self.separate_spinbox)
+            if pomodoros is None:
+                return
             self.task_manager.add_task(task_text, pomodoros_planned=pomodoros)
         self.cancel_separate_add()
         self.update_separate_task_display()
@@ -5739,13 +5224,13 @@ class FocusGUI:
         check.grid(row=0, column=0, padx=(0, 8))
 
         # Title
-        title_text = f"✅ {task.title}" if task.completed else task.title
-        text_color = "#666666" if task.completed else self.ui_fg
+        title_text = task.title
+        text_color = self.ui_muted if task.completed else self.ui_fg
 
         title_label = tk.Label(
             task_row,
             text=title_text,
-            font=("Arial", 7),
+            font=("Arial", 11),
             fg=text_color,
             bg=self.ui_bg,
             anchor="w",
@@ -5753,11 +5238,11 @@ class FocusGUI:
         title_label.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=(0, 5))
 
         # Pomodoro info
-        pomodoro_text = f"🍅{task.pomodoros_completed}/{task.pomodoros_planned}"
+        pomodoro_text = f"{task.pomodoros_completed}/{task.pomodoros_planned}"
         pomodoro_label = tk.Label(
             task_row,
             text=pomodoro_text,
-            font=("Arial", 7),
+            font=("Arial", 11),
             fg=self.ui_accent,
             bg=self.ui_bg,
         )
@@ -5900,22 +5385,56 @@ class FocusGUI:
         """Show session statistics"""
         stats = self.session_manager.get_session_statistics()
 
-        stats_text = f"""Session Statistics:
-
-Total Sessions: {stats["total_sessions"]}
-Work Sessions: {stats["work_sessions"]}
-Break Sessions: {stats["break_sessions"]}
-
-Total Work Time: {stats["total_work_time"]:.1f} minutes
-Total Break Time: {stats["total_break_time"]:.1f} minutes
-
-Average Work Session: {stats["average_work_session"]:.1f} minutes
-Average Break Session: {stats["average_break_session"]:.1f} minutes
-
-Today's Sessions: {stats["today_sessions"]}
-Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
-
-        messagebox.showinfo("Session Statistics", stats_text)
+        if getattr(self, "_stats_window", None) and self._stats_window.winfo_exists():
+            self._stats_window.destroy()
+        window = self._stats_window = tk.Toplevel(self.root)
+        window.title("Statistics")
+        window.transient(self.root)
+        frame = ttk.Frame(window, padding=18)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="Today", font=("Arial", 16, "bold")).grid(
+            row=0, columnspan=3, sticky="w"
+        )
+        ttk.Label(
+            frame,
+            text=f"{stats['today_sessions']} sessions  ·  {stats['today_work_time']:.0f} minutes of focus",
+        ).grid(row=1, columnspan=3, sticky="w", pady=(3, 14))
+        for row, cells in enumerate(
+            (
+                ("All sessions", "Focus", "Break"),
+                (
+                    f"Sessions ({stats['total_sessions']} total)",
+                    stats["work_sessions"],
+                    stats["break_sessions"],
+                ),
+                (
+                    "Total minutes",
+                    f"{stats['total_work_time']:.1f}",
+                    f"{stats['total_break_time']:.1f}",
+                ),
+                (
+                    "Average minutes",
+                    f"{stats['average_work_session']:.1f}",
+                    f"{stats['average_break_session']:.1f}",
+                ),
+            ),
+            2,
+        ):
+            for col, cell in enumerate(cells):
+                ttk.Label(
+                    frame, text=cell, style="Muted.TLabel" if row == 2 else "TLabel"
+                ).grid(
+                    row=row,
+                    column=col,
+                    sticky="e" if col else "w",
+                    padx=(0, 14),
+                    pady=3,
+                )
+        ttk.Button(frame, text="Done", command=window.destroy).grid(
+            row=6, columnspan=3, sticky="e", pady=(10, 0)
+        )
+        window.bind("<Escape>", lambda e: window.destroy())
+        place_dialog(window, self.root)
 
     def show_settings(self):
         """Show settings dialog"""
@@ -5928,18 +5447,17 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
         self.root.wait_window(dialog.dialog)
 
         old_source = self.music_panel.selected_source
-        self.config.load_config()
+        if not dialog.result:
+            self.update_task_display()
+            return
+        self.refresh_palette()
+        level = self.config.get("gui_zoom", 0.85)
+        if level != self._zoom_level:
+            self.set_zoom(level, save=False)
         self.load_playlists()
         source = self.music_panel.selected_source
         if source and source != old_source and self.music.is_playing:
             self.music_panel.run(lambda: self.music.change_playlist(source))
-        self.task_manager.set_google_integration(
-            self.google_integration,
-            self.config.get("google_task_list_id", DEFAULT_TASK_LIST_ID),
-        )
-        self.work_button.config(
-            text=f"Start focus · {self.config.get('work_mins')} min"
-        )
         self.short_break_button.config(
             text=f"Short break · {self.config.get('short_break_mins')} min"
         )
@@ -5947,6 +5465,7 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
             text=f"Long break · {self.config.get('long_break_mins')} min"
         )
         self.update_task_display()
+        self.update_display()
 
     def on_session_complete(self, session_type: SessionType, duration: int):
         """Handle session completion"""
@@ -5983,8 +5502,10 @@ Today's Work Time: {stats["today_work_time"]:.1f} minutes"""
 
         def _do():
             self._select_session_task(session_type)
-            if session_type == SessionType.WORK and self.config.get(
-                "classical_music", True
+            if (
+                session_type == SessionType.WORK
+                and self.config.get("classical_music", True)
+                and self.music_panel.selected_source
             ):
                 self.music_panel.run(self.music.start_music)
             elif session_type in (SessionType.SHORT_BREAK, SessionType.LONG_BREAK):

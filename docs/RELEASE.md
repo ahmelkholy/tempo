@@ -1,11 +1,9 @@
-## Tempo 2.1.1
+## Tempo 2.2.0
 
-Ultimate Focus Timer is now Tempo. Existing installations keep their saved music, tasks, and window preferences. The terminal commands `tempo` and `focus` are both available in Python installations.
+Start focus from the clock, add a task with **Add**, and choose music from the same tall window. **Settings** now opens directly from the header. Timer lengths, notifications, music, appearance, and optional Google Tasks are grouped together. Choose **Appearance → Interface size** to scale text, controls, task rows, and popups together. Tempo remembers your zoom when you reopen it.
 
-Download the Windows x86-64 ZIP, the macOS ZIP for your processor (Apple Silicon or Intel), or the Linux x86-64 tar.gz. Extract the whole archive and open **Tempo**. Linux binaries are built on Ubuntu 22.04. The macOS downloads are ad-hoc signed.
+The timer remembers your window size and music on each device. Breaks pause and resume the same track. Connect Chrome to use your signed-in YouTube Mix.
 
-Music uses **mpv**. If it is missing, press **Play** and use the popup to install it. The popup offers installation through WinGet, Homebrew, or a supported Linux package manager when available. The desktop downloads include yt-dlp and the Deno JavaScript runtime. In a Python installation, use Python 3.11 or later with Tk and install mpv and Deno separately. [mpv installation](https://mpv.io/installation/) and [Deno installation](https://docs.deno.com/runtime/getting_started/installation/).
+Extract the desktop archive for your system and open **Tempo**. Choose Apple Silicon or Intel on macOS. Windows and Linux downloads are x86-64. The Linux build targets Ubuntu 22.04 or newer. Music requires mpv. The playback popup offers installation when a supported package manager is present. Desktop archives include the YouTube helpers.
 
-**Play** opens your selected song or Mix. The timer remembers the song and window size on each device. Breaks pause and resume the same track. For personal YouTube recommendations, connect the Chrome profile signed in on that device. The music popup offers a public queue when the account connection is unavailable and can update the YouTube helper after a playback failure.
-
-A Python wheel, source archive and SHA-256 checksums accompany the desktop downloads.
+The Python wheel, source distribution, and SHA-256 checksums are included below.

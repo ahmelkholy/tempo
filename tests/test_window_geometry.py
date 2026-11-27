@@ -33,7 +33,7 @@ def test_reopen_preserves_portrait_dimensions_at_saved_zoom(tmp_path, monkeypatc
 
     import pytest
 
-    from src.core import ConfigManager
+    from src.core import ConfigManager, TaskManager
     from src.ui import FocusGUI
 
     try:
@@ -55,6 +55,10 @@ def test_reopen_preserves_portrait_dimensions_at_saved_zoom(tmp_path, monkeypatc
     monkeypatch.setattr("src.core._STATE_FILE", tmp_path / "session_state.json")
     monkeypatch.setattr("src.ui.TrayManager.start", lambda self: None)
     monkeypatch.setattr("src.ui.HotkeyManager.start", lambda self: None)
+
+    tasks = TaskManager()
+    for i in range(3):
+        tasks.add_task(f"Saved task {i}", pomodoros_planned=1)
 
     for expected in [(283, height), (306, height - 49)]:
         app = FocusGUI()
